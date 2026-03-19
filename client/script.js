@@ -16,7 +16,20 @@ function quickMsg(text) {
   sendMessage();
 }
 
-async function getAIResponse(message) {
+async function sendMessage() {
+  const message = input.value;
+
+  if (!message) return;
+
+  addMessage(message, "user");
+  input.value = "";
+
+  // Typing indicator
+  const typing = document.createElement("div");
+  typing.classList.add("message", "bot");
+  typing.innerText = "Typing...";
+  messages.appendChild(typing);
+
   try {
     const response = await fetch(API_URL, {
       method: "POST",
@@ -27,29 +40,15 @@ async function getAIResponse(message) {
     });
 
     const data = await response.json();
-    return data.reply;
+
+    typing.remove();
+    addMessage(data.reply, "bot");
 
   } catch (error) {
-    return "Error connecting to server.";
+    console.error(error);
+    typing.remove();
+    addMessage("Error connecting to AI 😢", "bot");
   }
-}
-
-async function sendMessage() {
-  const msg = input.value.trim();
-  if (!msg) return;
-
-  addMessage(msg, "user");
-  input.value = "";
-
-  const typing = document.createElement("div");
-  typing.classList.add("message", "bot");
-  typing.innerText = "Typing...";
-  messages.appendChild(typing);
-
-  const reply = await getAIResponse(msg);
-
-  typing.remove();
-  addMessage(reply, "bot");
 }
 
 input.addEventListener("keypress", function (e) {
