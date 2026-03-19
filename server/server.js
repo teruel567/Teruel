@@ -13,7 +13,11 @@ const PORT = process.env.PORT || 3000;
 
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
-
+if (!message) {
+  return res.status(400).json({
+    reply: "No message provided"
+  });
+}
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -37,10 +41,11 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const data = await response.json();
+console.log("GROQ RESPONSE:", JSON.stringify(data, null, 2));
 
-    res.json({
-      reply: data?.choices?.[0]?.message?.content || "No response from AI"
-    });
+res.json({
+  reply: data?.choices?.[0]?.message?.content || "No response from AI"
+});
 
   } catch (error) {
     console.error(error);
