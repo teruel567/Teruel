@@ -1,7 +1,7 @@
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
-const API_URL = "http://localhost:3000/chat";
+const API_URL = "https://teruel.onrender.com/api/chat";
 
 function addMessage(text, sender) {
   const msg = document.createElement("div");
