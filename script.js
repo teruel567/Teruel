@@ -1,98 +1,102 @@
 // ===============================
-// BUSINESS DATA (EDIT THIS FOR CLIENTS)
+// BUSINESS DATA (EDIT FOR CLIENT)
 // ===============================
 const businessData = {
   name: "SmartBiz Assistant",
   services: "We offer website development, chatbot creation, and automation services.",
   pricing: "Our pricing starts from $50 depending on your needs.",
-  contact: "You can contact us at: smartbiz@email.com"
+  contact: "Contact us at: smartbiz@email.com"
 };
 
 // ===============================
-// DOM ELEMENTS
+// DOM
 // ===============================
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
 // ===============================
-// ADD MESSAGE FUNCTION
+// ADD MESSAGE
 // ===============================
 function addMessage(text, sender) {
-  const messageDiv = document.createElement("div");
-  messageDiv.classList.add("message", sender);
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+  msg.textContent = text;
 
-  messageDiv.textContent = text;
-  messages.appendChild(messageDiv);
-
+  messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
 }
 
 // ===============================
-// BOT RESPONSE LOGIC
+// BOT LOGIC (UPGRADED)
 // ===============================
-function botReply(inputText) {
-  const text = inputText.toLowerCase();
+function botReply(userText) {
+  const text = userText.toLowerCase();
 
+  // Greeting
   if (text.includes("hello") || text.includes("hi")) {
     addMessage("Hello 👋 How can I help you today?", "bot");
   }
 
+  // Services
   else if (text.includes("service")) {
     addMessage(businessData.services, "bot");
   }
 
+  // Pricing
   else if (text.includes("price") || text.includes("cost")) {
     addMessage(businessData.pricing, "bot");
   }
 
+  // Contact
   else if (text.includes("contact") || text.includes("email")) {
     addMessage(businessData.contact, "bot");
   }
 
-  else if (text.includes("about")) {
-    addMessage("We provide professional chatbot solutions for businesses.", "bot");
+  // Simple knowledge (upgrade feel)
+  else if (text.includes("english")) {
+    addMessage("English is a global language used for communication, business, and education.", "bot");
   }
 
+  // General questions
+  else if (text.includes("what is") || text.includes("who is")) {
+    addMessage("I'm a business chatbot 🤖. I mainly help with services, pricing, and contact info.", "bot");
+  }
+
+  // Help
   else if (text.includes("help")) {
-    addMessage("I can help you with services, pricing, or contact info 😊", "bot");
+    addMessage("I can help with services, pricing, or contact info 😊", "bot");
   }
 
-  else if (text.includes("what")) {
-    addMessage("I focus on business-related questions like services, pricing, or contact info.", "bot");
-  }
-
+  // Default fallback
   else {
-    addMessage("I can help with services, pricing, or contact. Please choose an option below 👇", "bot");
+    addMessage("I didn’t understand that 😅. Try asking about services, pricing, or contact.", "bot");
   }
 }
 
 // ===============================
-// SEND MESSAGE FUNCTION
+// SEND MESSAGE
 // ===============================
 function sendMessage() {
   const text = input.value.trim();
-
-  if (text === "") return;
+  if (!text) return;
 
   addMessage(text, "user");
   input.value = "";
 
   setTimeout(() => {
     botReply(text);
-  }, 500);
+  }, 400);
 }
 
 // ===============================
-// ENTER KEY SUPPORT
+// ENTER KEY
 // ===============================
 input.addEventListener("keypress", function (e) {
-  if (e.key === "Enter") {
-    sendMessage();
-  }
+  if (e.key === "Enter") sendMessage();
 });
 
 // ===============================
-// BUTTON ACTIONS (OPTION BUTTONS)
+// BUTTONS
 // ===============================
 function showServices() {
   addMessage(businessData.services, "bot");
@@ -107,11 +111,11 @@ function showContact() {
 }
 
 // ===============================
-// INITIAL WELCOME MESSAGE
+// WELCOME MESSAGE
 // ===============================
-window.onload = function () {
+window.onload = () => {
   addMessage(
-    `Hi 👋 Welcome to ${businessData.name}! I can help you with services, pricing, or contact info.`,
+    `Hi 👋 Welcome to ${businessData.name}! Ask about services, pricing, or contact.`,
     "bot"
   );
 };
