@@ -1,5 +1,5 @@
 // ===============================
-// BUSINESS DATA (EDIT FOR CLIENT)
+// BUSINESS DATA
 // ===============================
 const businessData = {
   name: "SmartBiz Assistant",
@@ -27,7 +27,7 @@ function addMessage(text, sender) {
 }
 
 // ===============================
-// BOT LOGIC (UPGRADED)
+// BOT LOGIC (FIXED)
 // ===============================
 function botReply(userText) {
   const text = userText.toLowerCase();
@@ -35,6 +35,11 @@ function botReply(userText) {
   // Greeting
   if (text.includes("hello") || text.includes("hi")) {
     addMessage("Hello 👋 How can I help you today?", "bot");
+  }
+
+  // 🔥 IMPORTANT: specific answers FIRST
+  else if (text.includes("english")) {
+    addMessage("English is a global language used for communication, business, and education.", "bot");
   }
 
   // Services
@@ -50,11 +55,6 @@ function botReply(userText) {
   // Contact
   else if (text.includes("contact") || text.includes("email")) {
     addMessage(businessData.contact, "bot");
-  }
-
-  // Simple knowledge (upgrade feel)
-  else if (text.includes("english")) {
-    addMessage("English is a global language used for communication, business, and education.", "bot");
   }
 
   // General questions
