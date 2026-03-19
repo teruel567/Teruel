@@ -40,12 +40,6 @@ body {
   border-radius: 15px;
   margin: 5px 0;
   max-width: 75%;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .user {
@@ -92,4 +86,4 @@ button {
 
 .quick-buttons button {
   background: #1e293b;
-}
+  }
