@@ -3,7 +3,7 @@ const input = document.getElementById("input");
 
 // BUSINESS DATA (clients can edit this easily)
 const businessData = {
-  name: "My Business",
+  name: "SmartBiz Assistant",
   services: "We offer web design, chatbot development, and automation.",
   pricing: "Our pricing starts from $10 depending on your needs.",
   contact: "Email us at example@email.com"
