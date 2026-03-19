@@ -1,53 +1,40 @@
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
-const API_URL = "https://teruel.onrender.com/api/chat";
+const API_URL = "/api/chat";
 
 function addMessage(text, sender) {
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
-  msg.innerText = text;
+  msg.textContent = text;
   messages.appendChild(msg);
   messages.scrollTop = messages.scrollHeight;
 }
 
-function quickMsg(text) {
-  input.value = text;
-  sendMessage();
-}
-
 async function sendMessage() {
-  const message = input.value;
+  const text = input.value.trim();
+  if (!text) return;
 
-  if (!message) return;
-
-  addMessage(message, "user");
+  addMessage(text, "user");
   input.value = "";
 
-  // Typing indicator
-  const typing = document.createElement("div");
-  typing.classList.add("message", "bot");
-  typing.innerText = "Typing...";
-  messages.appendChild(typing);
+  addMessage("Typing...", "bot");
 
   try {
-    const response = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message: text })
     });
 
-    const data = await response.json();
+    const data = await res.json();
 
-    typing.remove();
-    addMessage(data.reply, "bot");
+    messages.lastChild.textContent = data.reply || "Error";
 
   } catch (error) {
-    console.error(error);
-    typing.remove();
-    addMessage("Error connecting to AI 😢", "bot");
+    messages.lastChild.textContent = "Failed to connect";
   }
 }
 
