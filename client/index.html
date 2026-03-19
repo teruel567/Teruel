@@ -1,1 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+<div class="chat-container">
+  <div class="chat-header">🤖 AI Assistant</div>
+
+  <div id="messages" class="messages"></div>
+
+  <div class="quick-buttons">
+    <button onclick="quickMsg('What services do you offer?')">Services</button>
+    <button onclick="quickMsg('What is your pricing?')">Pricing</button>
+    <button onclick="quickMsg('How can I contact you?')">Contact</button>
+  </div>
+
+  <div class="input-area">
+    <input id="input" type="text" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+      </html>
