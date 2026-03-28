@@ -1,4 +1,10 @@
 export default async function handler(req, res) {
+
+  // 🔥 Check if API key exists
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(500).json({ reply: "API KEY MISSING ❌" });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -17,42 +23,21 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192", // 🔥 upgraded model
+        model: "llama3-8b-8192",
         messages: [
-          {
-            role: "system",
-            content: "You are a smart, helpful AI assistant like JARVIS. Keep answers clear and useful."
-          },
-          {
-            role: "user",
-            content: message
-          }
+          { role: "system", content: "You are a helpful AI assistant." },
+          { role: "user", content: message }
         ]
       })
     });
 
     const data = await response.json();
 
-    // 🔍 DEBUG (VERY IMPORTANT)
-    console.log("Groq full response:", JSON.stringify(data, null, 2));
-
-    // ⚠️ Handle API errors properly
-    if (!response.ok) {
-      return res.status(500).json({
-        reply: "⚠️ AI Error: " + (data.error?.message || "Unknown error")
-      });
-    }
-
-    // ✅ Send back AI reply
     return res.status(200).json({
-      reply: data?.choices?.[0]?.message?.content || "No response from AI"
+      reply: data?.choices?.[0]?.message?.content || "No response"
     });
 
   } catch (error) {
-    console.error("Server error:", error);
-
-    return res.status(500).json({
-      reply: "⚠️ Server error. Check logs."
-    });
+    return res.status(500).json({ error: "Server error ❌" });
   }
-  }
+      }
