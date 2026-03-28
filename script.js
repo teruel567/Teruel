@@ -1,3 +1,6 @@
+// Debug to confirm new version is deployed
+console.log("NEW VERSION LOADED 🚀");
+
 const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 
@@ -31,13 +34,21 @@ async function sendMessage() {
 
     const data = await res.json();
 
-    messages.lastChild.textContent = data.reply || "Error";
+    // 🔥 Handle API errors properly
+    if (!res.ok) {
+      messages.lastChild.textContent =
+        "API Error: " + (data.error || data.reply || "Unknown");
+      return;
+    }
+
+    messages.lastChild.textContent = data.reply || "No response";
 
   } catch (error) {
-    messages.lastChild.textContent = "Failed to connect";
+    messages.lastChild.textContent = "Failed to connect ❌";
   }
 }
 
+// Send on Enter key
 input.addEventListener("keypress", function (e) {
   if (e.key === "Enter") {
     sendMessage();
