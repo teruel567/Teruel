@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BABI-Bot</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="stats">
+    Messages sent: <span id="msgCount">0</span>
+    <button onclick="clearChat()">Clear</button>
+  </div>
+<div class="header">
+  <img src="favicon.png" class="logo">
+  <h2>BABI-Bot</h2>
+</div>
+  <div class="chat-container">
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+<select id="mode">
+  <option value="normal">Normal</option>
+  <option value="code">Code</option>
+  <option value="debug">Debug</option>
+</select>
+<input id="input" placeholder="Message BABI-Bot..." />
+
+<label for="imageInput" class="upload-btn">📷</label>
+<input type="file" id="imageInput" accept="image/*" hidden>
+
+<button onclick="sendMessage()">➤</button>
+
+</div>
+  </div>
+
+  <script src="script.js"></script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+  </script>
+
+</body>
+</html>
