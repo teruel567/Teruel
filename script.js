@@ -1,4 +1,4 @@
-const messages = document.getElementById("messages");
+  const messages = document.getElementById("messages");
 const input = document.getElementById("input");
 const imageUpload = document.getElementById("imageInput");
 const msgCount = document.getElementById("msgCount");
@@ -8,51 +8,38 @@ let stats = JSON.parse(localStorage.getItem("chatStats")) || { messages: 0 };
 
 msgCount.innerText = stats.messages;
 
-// Load previous messages
+// ✅ Load previous messages (TEXT + IMAGE SUPPORT)
 conversationHistory.forEach(msg => {
-  addMessage(
-    msg.content?.[0]?.text || "[Image]",
-    msg.role === "user" ? "user" : "bot"
-  );
-});
-
-function addMessage(text, type) {
   const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerHTML = text.replace(/```([\s\S]*?)```/g, "<pre>$1</pre>");
+  div.className = "msg " + (msg.role === "user" ? "user" : "bot");
+
+  msg.content.forEach(item => {
+    if (item.type === "text") {
+      const span = document.createElement("span");
+      span.innerHTML = item.text.replace(/```([\s\S]*?)```/g, "<pre>$1</pre>");
+      div.appendChild(span);
+    }
+
+    if (item.type === "image_url") {
+      const img = document.createElement("img");
+      img.src = item.image_url.url;
+      img.style.maxWidth = "200px";
+      div.appendChild(img);
+    }
+  });
+
   messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-// Image preview
-imageUpload.addEventListener("change", function () {
-  const file = imageUpload.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = function (e) {
-    const div = document.createElement("div");
-    div.className = "msg user";
-
-    const img = document.createElement("img");
-    img.src = e.target.result;
-
-    div.appendChild(img);
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  };
-
-  reader.readAsDataURL(file);
 });
 
+messages.scrollTop = messages.scrollHeight;
+
+// ✅ Send Message
 async function sendMessage() {
   let text = input.value.trim();
   const file = imageUpload.files[0];
-
   const mode = document.getElementById("mode");
 
-  // 🔥 Mode logic
+  // Mode logic
   if (mode && mode.value === "code") {
     text = "Write clean, working code for: " + text;
   }
@@ -61,19 +48,35 @@ async function sendMessage() {
     text = "Fix this code and explain the error: " + text;
   }
 
+  if (!text && !file) return;
+
   let imageData = null;
 
   if (file) {
     imageData = await convertImage(file);
   }
 
-  if (!text && !file) return;
+  // ✅ Create user message (TEXT + IMAGE TOGETHER)
+  const div = document.createElement("div");
+  div.className = "msg user";
 
   if (text) {
-    addMessage(text, "user");
+    const span = document.createElement("span");
+    span.textContent = text;
+    div.appendChild(span);
   }
 
-  // 🔥 Combine text + image
+  if (imageData) {
+    const img = document.createElement("img");
+    img.src = imageData;
+    img.style.maxWidth = "200px";
+    div.appendChild(img);
+  }
+
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+
+  // ✅ Save message properly
   let userContent = [];
 
   if (text) {
@@ -93,21 +96,24 @@ async function sendMessage() {
   });
 
   input.value = "";
+  imageUpload.value = "";
 
+  // Update stats
   stats.messages++;
   localStorage.setItem("chatStats", JSON.stringify(stats));
   msgCount.innerText = stats.messages;
 
+  // Typing indicator
   const typingDiv = document.createElement("div");
   typingDiv.className = "msg bot";
-  typingDiv.innerText = "BABI-Bot is typing...";
+  typingDiv.innerText = "AI is typing...";
   messages.appendChild(typingDiv);
 
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         message: text,
@@ -117,12 +123,11 @@ async function sendMessage() {
     });
 
     const data = await res.json();
-
-    imageUpload.value = "";
     typingDiv.remove();
 
     typeMessage(data.reply);
 
+    // Save bot reply
     conversationHistory.push({
       role: "assistant",
       content: [
@@ -138,26 +143,7 @@ async function sendMessage() {
   }
 }
 
-function clearChat() {
-  localStorage.removeItem("chatHistory");
-  conversationHistory = [];
-  messages.innerHTML = "";
-}
-
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
-  }
-});
-
-function convertImage(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
-
+// ✅ Typing effect
 function typeMessage(text) {
   const div = document.createElement("div");
   div.className = "msg bot";
@@ -175,4 +161,35 @@ function typeMessage(text) {
       clearInterval(interval);
     }
   }, 20);
+}
+
+// ✅ Convert image to base64
+function convertImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// ✅ Clear chat
+function clearChat() {
+  localStorage.removeItem("chatHistory");
+  conversationHistory = [];
+  messages.innerHTML = "";
+}
+
+// Enter key support
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    sendMessage();
+  }
+});
+
+// Fallback message function
+function addMessage(text, type) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.innerHTML = text;
+  messages.appendChild(div);
 }
