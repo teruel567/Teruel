@@ -38,7 +38,7 @@ try {
     messages: [
   {
     role: "system",
-    content: "You are BABI-Bot, a powerful coding assistant. Help the user write, debug, and understand code. Always give clear explanations. If the user asks for code, provide clean and complete examples."
+    content: "You are AI Assitance, a powerful coding assistant. Help the user write, debug, and understand code. Always give clear explanations. If the user asks for code, provide clean and complete examples."
   },
   ...history,
   { role: "user", content: content }
@@ -66,4 +66,4 @@ try {
 
 }
 
-    }
+}
