@@ -1,50 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Assistance</title>
-
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="logo.png">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Assistance</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="logo.png">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
+  <!-- Top Stats Bar -->
   <div class="stats">
     Messages sent: <span id="msgCount">0</span>
     <button onclick="clearChat()">Clear</button>
   </div>
-<div class="header">
-  <img src="logo.png" class="logo">
-  <h2>AI Assistance</h2>
-</div>
+
+  <!-- Minimal Header -->
+  <div class="header">
+    <img src="logo.png" class="logo" alt="AI Logo">
+    <h2>AI Assistance</h2>
+  </div>
+
+  <!-- Full Screen Chat Container -->
   <div class="chat-container">
     <div class="messages" id="messages"></div>
 
+    <!-- Input Area -->
     <div class="input-area">
-<select id="mode">
-  <option value="normal">Normal</option>
-  <option value="code">Code</option>
-  <option value="debug">Debug</option>
-</select>
-<input id="input" placeholder="Message AI Assistance..." />
+      <select id="mode">
+        <option value="normal">Normal</option>
+        <option value="code">Code</option>
+        <option value="debug">Debug</option>
+      </select>
 
-<label for="imageInput" class="upload-btn">📷</label>
-<input type="file" id="imageInput" accept="image/*" hidden>
+      <input 
+        id="input" 
+        type="text" 
+        placeholder="Message AI Assistance..." 
+        autocomplete="off"
+      />
 
-<button onclick="sendMessage()">➤</button>
+      <label for="imageInput" class="upload-btn">📷</label>
+      <input type="file" id="imageInput" accept="image/*" hidden>
 
-</div>
+      <button onclick="sendMessage()">➤</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
 
+  <!-- Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js");
+      navigator.serviceWorker.register("service-worker.js")
+        .catch(err => console.log("Service Worker registration failed:", err));
     }
   </script>
 
 </body>
-  </html>
+    </html>
