@@ -1,195 +1,80 @@
-  const messages = document.getElementById("messages");
-const input = document.getElementById("input");
-const imageUpload = document.getElementById("imageInput");
-const msgCount = document.getElementById("msgCount");
+// script.js - Clean Chatbot Frontend
 
-let conversationHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
-let stats = JSON.parse(localStorage.getItem("chatStats")) || { messages: 0 };
+let messageCount = 0;
 
-msgCount.innerText = stats.messages;
+const messagesDiv = document.getElementById('messages');
+const inputField = document.getElementById('input');
+const msgCountSpan = document.getElementById('msgCount');
+const modeSelect = document.getElementById('mode');
 
-// ✅ Load previous messages (TEXT + IMAGE SUPPORT)
-conversationHistory.forEach(msg => {
-  const div = document.createElement("div");
-  div.className = "msg " + (msg.role === "user" ? "user" : "bot");
+function addMessage(role, content) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `msg ${role}`;
+  msgDiv.textContent = content;
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
-  msg.content.forEach(item => {
-    if (item.type === "text") {
-      const span = document.createElement("span");
-      span.innerHTML = item.text.replace(/```([\s\S]*?)```/g, "<pre>$1</pre>");
-      div.appendChild(span);
-    }
+function clearChat() {
+  if (confirm("Clear all messages?")) {
+    messagesDiv.innerHTML = '';
+    messageCount = 0;
+    msgCountSpan.textContent = '0';
+  }
+}
 
-    if (item.type === "image_url") {
-      const img = document.createElement("img");
-      img.src = item.image_url.url;
-      img.style.maxWidth = "200px";
-      div.appendChild(img);
-    }
-  });
-
-  messages.appendChild(div);
-});
-
-messages.scrollTop = messages.scrollHeight;
-
-// ✅ Send Message
 async function sendMessage() {
-  let text = input.value.trim();
-  const file = imageUpload.files[0];
-  const mode = document.getElementById("mode");
+  const userText = inputField.value.trim();
+  if (!userText) return;
 
-  // Mode logic
-  if (mode && mode.value === "code") {
-    text = "Write clean, working code for: " + text;
-  }
+  addMessage('user', userText);
+  inputField.value = '';
 
-  if (mode && mode.value === "debug") {
-    text = "Fix this code and explain the error: " + text;
-  }
+  messageCount++;
+  msgCountSpan.textContent = messageCount;
 
-  if (!text && !file) return;
-
-  let imageData = null;
-
-  if (file) {
-    imageData = await convertImage(file);
-  }
-
-  // ✅ Create user message (TEXT + IMAGE TOGETHER)
-  const div = document.createElement("div");
-  div.className = "msg user";
-
-  if (text) {
-    const span = document.createElement("span");
-    span.textContent = text;
-    div.appendChild(span);
-  }
-
-  if (imageData) {
-    const img = document.createElement("img");
-    img.src = imageData;
-    img.style.maxWidth = "200px";
-    div.appendChild(img);
-  }
-
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-
-  // ✅ Save message properly
-  let userContent = [];
-
-  if (text) {
-    userContent.push({ type: "text", text: text });
-  }
-
-  if (imageData) {
-    userContent.push({
-      type: "image_url",
-      image_url: { url: imageData }
-    });
-  }
-
-  conversationHistory.push({
-    role: "user",
-    content: userContent
-  });
-
-  input.value = "";
-  imageUpload.value = "";
-
-  // Update stats
-  stats.messages++;
-  localStorage.setItem("chatStats", JSON.stringify(stats));
-  msgCount.innerText = stats.messages;
-
-  // Typing indicator
-  const typingDiv = document.createElement("div");
-  typingDiv.className = "msg bot";
-  typingDiv.innerText = "AI is typing...";
-  messages.appendChild(typingDiv);
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'msg bot';
+  thinkingDiv.textContent = 'Thinking...';
+  messagesDiv.appendChild(thinkingDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: text,
-        history: conversationHistory,
-        image: imageData
+        messages: [{ role: 'user', content: userText }],
+        mode: modeSelect.value
       })
     });
 
-    const data = await res.json();
-    typingDiv.remove();
+    const data = await response.json();
+    const botReply = data.reply || "Sorry, I couldn't generate a response.";
 
-    typeMessage(data.reply);
+    thinkingDiv.remove();
+    addMessage('bot', botReply);
 
-    // Save bot reply
-    conversationHistory.push({
-      role: "assistant",
-      content: [
-        { type: "text", text: data.reply }
-      ]
-    });
-
-    localStorage.setItem("chatHistory", JSON.stringify(conversationHistory));
-
-  } catch (err) {
-    typingDiv.remove();
-    addMessage("Server error. Try again.", "bot");
+  } catch (error) {
+    console.error(error);
+    thinkingDiv.textContent = "❌ Could not connect to AI. Please try again.";
   }
 }
 
-// ✅ Typing effect
-function typeMessage(text) {
-  const div = document.createElement("div");
-  div.className = "msg bot";
-  messages.appendChild(div);
+inputField.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') sendMessage();
+});
 
-  let i = 0;
-
-  const interval = setInterval(() => {
-    div.textContent += text.charAt(i);
-    i++;
-
-    messages.scrollTop = messages.scrollHeight;
-
-    if (i >= text.length) {
-      clearInterval(interval);
-    }
-  }, 20);
-}
-
-// ✅ Convert image to base64
-function convertImage(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
-
-// ✅ Clear chat
-function clearChat() {
-  localStorage.removeItem("chatHistory");
-  conversationHistory = [];
-  messages.innerHTML = "";
-}
-
-// Enter key support
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
+document.getElementById('imageInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    alert(`📸 Image selected: ${file.name}\n\nImage analysis support coming soon!`);
+    e.target.value = '';
   }
 });
 
-// Fallback message function
-function addMessage(text, type) {
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerHTML = text;
-  messages.appendChild(div);
-}
+window.onload = () => {
+  setTimeout(() => {
+    addMessage('bot', "Hey! 👋 I'm your AI Assistant.\nHow can I help you today?");
+  }, 600);
+};
