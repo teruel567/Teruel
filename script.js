@@ -1,80 +1,73 @@
-// script.js - Clean Chatbot Frontend
+document.addEventListener('DOMContentLoaded', () => {
+  const messagesDiv = document.getElementById('messages');
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const countEl = document.getElementById('message-count');
 
-let messageCount = 0;
-
-const messagesDiv = document.getElementById('messages');
-const inputField = document.getElementById('input');
-const msgCountSpan = document.getElementById('msgCount');
-const modeSelect = document.getElementById('mode');
-
-function addMessage(role, content) {
-  const msgDiv = document.createElement('div');
-  msgDiv.className = `msg ${role}`;
-  msgDiv.textContent = content;
-  messagesDiv.appendChild(msgDiv);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-function clearChat() {
-  if (confirm("Clear all messages?")) {
-    messagesDiv.innerHTML = '';
-    messageCount = 0;
-    msgCountSpan.textContent = '0';
+  function showWelcome() {
+    messagesDiv.innerHTML = `
+      <div class="h-full flex flex-col items-center justify-center text-center px-4 py-12">
+        <div class="text-6xl mb-6">👋</div>
+        <p class="text-2xl font-light">Hey! I'm your AI Assistant.</p>
+        <p class="text-gray-400 mt-3 text-lg">How can I help you today?</p>
+      </div>
+    `;
   }
-}
 
-async function sendMessage() {
-  const userText = inputField.value.trim();
-  if (!userText) return;
+  showWelcome();
 
-  addMessage('user', userText);
-  inputField.value = '';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
 
-  messageCount++;
-  msgCountSpan.textContent = messageCount;
+    addMessage(userMessage, 'user');
+    input.value = '';
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
 
-  const thinkingDiv = document.createElement('div');
-  thinkingDiv.className = 'msg bot';
-  thinkingDiv.textContent = 'Thinking...';
-  messagesDiv.appendChild(thinkingDiv);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    try {
+      const response = await fetch('api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: userMessage }]
+        })
+      });
 
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: userText }],
-        mode: modeSelect.value
-      })
-    });
+      if (!response.ok) throw new Error('API error');
 
-    const data = await response.json();
-    const botReply = data.reply || "Sorry, I couldn't generate a response.";
+      const data = await response.json();
+      const aiReply = data.reply || "Sorry, I couldn't generate a response.";
 
-    thinkingDiv.remove();
-    addMessage('bot', botReply);
+      addMessage(aiReply, 'assistant');
 
-  } catch (error) {
-    console.error(error);
-    thinkingDiv.textContent = "❌ Could not connect to AI. Please try again.";
+    } catch (error) {
+      console.error(error);
+      addMessage("Error: Could not connect to AI. Please check your Groq API key on Vercel.", 'assistant');
+    }
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send';
+    countEl.textContent = `Messages sent: ${Math.floor(messagesDiv.children.length / 2)}`;
+  });
+
+  function addMessage(text, role) {
+    const isUser = role === 'user';
+    const html = `
+      <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+        <div class="max-w-[80%] rounded-3xl px-5 py-4 ${
+          isUser 
+            ? 'bg-orange-600 text-white' 
+            : 'bg-gray-800 text-gray-100'
+        }">
+          ${text}
+        </div>
+      </div>
+    `;
+    messagesDiv.innerHTML += html;
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
-}
-
-inputField.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendMessage();
 });
-
-document.getElementById('imageInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    alert(`📸 Image selected: ${file.name}\n\nImage analysis support coming soon!`);
-    e.target.value = '';
-  }
-});
-
-window.onload = () => {
-  setTimeout(() => {
-    addMessage('bot', "Hey! 👋 I'm your AI Assistant.\nHow can I help you today?");
-  }, 600);
-};
