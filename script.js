@@ -7,7 +7,16 @@ const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 
-// Handle image upload
+// Add welcome message
+function addWelcome() {
+  const welcome = document.createElement('div');
+  welcome.className = 'message assistant';
+  welcome.innerHTML = `<p>Hey! 👋 I'm your AI assistant. How can I help you today? Send a message or upload an image 📸</p>`;
+  chatContainer.appendChild(welcome);
+}
+addWelcome();
+
+// Handle image upload + preview with remove button
 imageUpload.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   files.forEach(file => {
@@ -28,7 +37,7 @@ function renderPreviews() {
     const div = document.createElement('div');
     div.style.position = 'relative';
     div.innerHTML = `
-      <img src="${base64}">
+      <img src="${base64}" style="height:85px; border-radius:10px; object-fit:cover; border:2px solid #555;">
       <button style="position:absolute; top:-8px; right:-8px; background:#ef4444; color:white; border:none; border-radius:50%; width:24px; height:24px; font-size:14px; cursor:pointer;">×</button>
     `;
     div.querySelector('button').onclick = () => {
@@ -39,33 +48,57 @@ function renderPreviews() {
   });
 }
 
+// Show message in chat
+function addMessage(role, text, images = []) {
+  const bubble = document.createElement('div');
+  bubble.className = `message ${role}`;
+  
+  let html = `<p style="margin: 0 0 10px 0;">${text}</p>`;
+  
+  if (images && images.length > 0) {
+    images.forEach(src => {
+      html += `<img src="${src}" style="max-width:100%; border-radius:12px; margin-top:8px;">`;
+    });
+  }
+  
+  bubble.innerHTML = html;
+  chatContainer.appendChild(bubble);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
 // Send message
 async function sendMessage() {
   const text = userInput.value.trim();
 
   if (!text && selectedImages.length === 0) return;
 
-  // Build content for Groq (text + images)
-  const content = [];
-  content.push({ type: "text", text: text || "Please analyze these images!" });
+  // Show user message immediately
+  addMessage('user', text || '📸 Image(s) sent', selectedImages);
 
-  selectedImages.forEach(base64 => {
-    content.push({
-      type: "image_url",
-      image_url: { url: base64 }
-    });
-  });
-
-  // Show user message
-  addMessage('user', text || '📸 Image sent', selectedImages);
-
-  // Clear input
-  const imagesToSend = [...selectedImages];
+  const currentImages = [...selectedImages];   // copy before clearing
   userInput.value = '';
   selectedImages = [];
   renderPreviews();
 
+  // Show thinking indicator
+  const thinking = document.createElement('div');
+  thinking.className = 'message assistant';
+  thinking.textContent = 'Thinking...';
+  chatContainer.appendChild(thinking);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
   try {
+    // Build multimodal content
+    const content = [];
+    content.push({ type: "text", text: text || "Please analyze these images and describe what you see." });
+
+    currentImages.forEach(base64 => {
+      content.push({
+        type: "image_url",
+        image_url: { url: base64 }
+      });
+    });
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,31 +110,16 @@ async function sendMessage() {
     if (!response.ok) throw new Error('API error');
 
     const data = await response.json();
+    thinking.remove();
     addMessage('assistant', data.content || "I couldn't process that.");
   } catch (err) {
     console.error(err);
+    thinking.remove();
     addMessage('assistant', "Sorry, something went wrong 😓 Try again!");
   }
 }
 
-function addMessage(role, text, images = []) {
-  const bubble = document.createElement('div');
-  bubble.className = `message ${role}`;
-  
-  let html = `<p style="margin: 0 0 10px 0;">${text}</p>`;
-  
-  if (images && images.length > 0) {
-    images.forEach(src => {
-      html += `<img src="${src}">`;
-    });
-  }
-  
-  bubble.innerHTML = html;
-  chatContainer.appendChild(bubble);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// Attach events
+// Events
 sendBtn.addEventListener('click', sendMessage);
 userInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') sendMessage();
