@@ -1,4 +1,4 @@
-// api/chat.js - Simple version (no extra npm package)
+// api/chat.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -7,29 +7,35 @@ export default async function handler(req, res) {
   try {
     const { messages } = req.body;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.2-11b-vision-preview",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",   // Current best vision model
         messages: [
           {
             role: "system",
             content: `You are a fun, witty AI assistant inspired by Grok. 
-Respond like a clever friend from Lagos. Use light humor and emojis when it fits. 
-You can analyze uploaded images. Be helpful and playful.`
+Respond like a clever friend from Lagos. Use light humor, emojis, and Naija vibe when it fits. 
+You can analyze uploaded images very well. Be helpful and playful.`
           },
           ...messages
         ],
         temperature: 0.7,
-        max_tokens: 800
+        max_tokens: 1000
       })
     });
 
-    const data = await response.json();
+    if (!groqResponse.ok) {
+      const errorText = await groqResponse.text();
+      console.error("Groq error:", errorText);
+      throw new Error(`Groq API returned ${groqResponse.status}`);
+    }
+
+    const data = await groqResponse.json();
     const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't respond.";
 
     res.status(200).json({ content: reply });
@@ -37,7 +43,7 @@ You can analyze uploaded images. Be helpful and playful.`
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ 
-      content: "Sorry, something went wrong 😓 Try again!" 
+      content: "Sorry, something went wrong on my side 😓 Please try again!" 
     });
   }
-        }
+          }
