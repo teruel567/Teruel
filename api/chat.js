@@ -25,7 +25,7 @@ Keep replies natural and not too long. You are very good at analyzing images.`
           ...messages
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 4000,
         stream: stream   // ← Support streaming
       })
     });
