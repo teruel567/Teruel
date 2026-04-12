@@ -156,3 +156,12 @@ sendBtn.addEventListener('click', sendMessage);
 userInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') sendMessage();
 });
+// Clear Chat Functionality
+const clearBtn = document.getElementById('clearBtn');
+
+clearBtn.addEventListener('click', () => {
+  if (confirm("Clear the entire chat? This cannot be undone.")) {
+    chatContainer.innerHTML = '';   // Clear all messages
+    addWelcome();                   // Show welcome message again
+  }
+});
