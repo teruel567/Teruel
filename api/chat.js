@@ -32,4 +32,4 @@ export default async function handler(req, res) {
       error: 'Failed to get response from Groq. Try again!' 
     });
   }
-      }
+}
