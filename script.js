@@ -1,4 +1,4 @@
-// script.js
+// script.js - Streaming Version
 let selectedImages = [];
 
 const imageUpload = document.getElementById('imageUpload');
@@ -13,11 +13,15 @@ function addWelcome() {
   welcome.className = 'message assistant';
   welcome.innerHTML = `<p>Hey! 👋 I'm your AI assistant from Lagos. How can I help you today? Send a message or upload an image 📸</p>`;
   chatContainer.appendChild(welcome);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  scrollToBottom();
 }
 addWelcome();
 
-// Image upload handling
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Image upload + preview
 imageUpload.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   files.forEach(file => {
@@ -49,28 +53,35 @@ function renderPreviews() {
   });
 }
 
-// Add message to chat
+// Add message (for user and final assistant)
 function addMessage(role, text, images = []) {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
   
   let html = `<p style="margin: 0 0 10px 0;">${text}</p>`;
-  
   if (images && images.length > 0) {
     images.forEach(src => {
       html += `<img src="${src}" style="max-width:100%; border-radius:12px; margin-top:8px;">`;
     });
   }
-  
   bubble.innerHTML = html;
   chatContainer.appendChild(bubble);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  scrollToBottom();
 }
 
-// Send message
+// Create a streaming assistant bubble
+function createStreamingBubble() {
+  const bubble = document.createElement('div');
+  bubble.className = 'message assistant';
+  bubble.innerHTML = `<p id="streaming-text"></p>`;
+  chatContainer.appendChild(bubble);
+  scrollToBottom();
+  return bubble.querySelector('#streaming-text');
+}
+
+// Send message with streaming
 async function sendMessage() {
   const text = userInput.value.trim();
-
   if (!text && selectedImages.length === 0) return;
 
   // Show user message
@@ -81,16 +92,13 @@ async function sendMessage() {
   selectedImages = [];
   renderPreviews();
 
-  // Show thinking indicator
-  const thinking = document.createElement('div');
-  thinking.className = 'message assistant';
-  thinking.textContent = 'Thinking... 🤔';
-  chatContainer.appendChild(thinking);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  // Create streaming bubble
+  const streamingTextEl = createStreamingBubble();
+  let fullResponse = '';
 
   try {
     const content = [];
-    content.push({ type: "text", text: text || "Please analyze these images and describe what you see." });
+    content.push({ type: "text", text: text || "Please analyze these images and describe what you see in detail." });
 
     currentImages.forEach(base64 => {
       content.push({ type: "image_url", image_url: { url: base64 } });
@@ -100,19 +108,46 @@ async function sendMessage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: 'user', content }]
+        messages: [{ role: 'user', content }],
+        stream: true   // ← Enable streaming
       })
     });
 
     if (!response.ok) throw new Error('API error');
 
-    const data = await response.json();
-    thinking.remove();
-    addMessage('assistant', data.content || "I couldn't process that.");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content || '';
+            if (delta) {
+              fullResponse += delta;
+              streamingTextEl.textContent = fullResponse;
+              scrollToBottom();
+            }
+          } catch (e) {
+            // Ignore parsing errors for incomplete chunks
+          }
+        }
+      }
+    }
+
   } catch (err) {
     console.error(err);
-    thinking.remove();
-    addMessage('assistant', "Sorry, something went wrong 😓 Try again!");
+    streamingTextEl.textContent = "Sorry, something went wrong 😓 Try again!";
   }
 }
 
