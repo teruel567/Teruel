@@ -7,16 +7,17 @@ const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 
-// Add welcome message
+// Welcome message
 function addWelcome() {
   const welcome = document.createElement('div');
   welcome.className = 'message assistant';
-  welcome.innerHTML = `<p>Hey! 👋 I'm your AI assistant. How can I help you today? Send a message or upload an image 📸</p>`;
+  welcome.innerHTML = `<p>Hey! 👋 I'm your AI assistant from Lagos. How can I help you today? Send a message or upload an image 📸</p>`;
   chatContainer.appendChild(welcome);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 addWelcome();
 
-// Handle image upload + preview with remove button
+// Image upload handling
 imageUpload.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   files.forEach(file => {
@@ -48,7 +49,7 @@ function renderPreviews() {
   });
 }
 
-// Show message in chat
+// Add message to chat
 function addMessage(role, text, images = []) {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
@@ -72,10 +73,10 @@ async function sendMessage() {
 
   if (!text && selectedImages.length === 0) return;
 
-  // Show user message immediately
+  // Show user message
   addMessage('user', text || '📸 Image(s) sent', selectedImages);
 
-  const currentImages = [...selectedImages];   // copy before clearing
+  const currentImages = [...selectedImages];
   userInput.value = '';
   selectedImages = [];
   renderPreviews();
@@ -83,20 +84,16 @@ async function sendMessage() {
   // Show thinking indicator
   const thinking = document.createElement('div');
   thinking.className = 'message assistant';
-  thinking.textContent = 'Thinking...';
+  thinking.textContent = 'Thinking... 🤔';
   chatContainer.appendChild(thinking);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 
   try {
-    // Build multimodal content
     const content = [];
     content.push({ type: "text", text: text || "Please analyze these images and describe what you see." });
 
     currentImages.forEach(base64 => {
-      content.push({
-        type: "image_url",
-        image_url: { url: base64 }
-      });
+      content.push({ type: "image_url", image_url: { url: base64 } });
     });
 
     const response = await fetch('/api/chat', {
