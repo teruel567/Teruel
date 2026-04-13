@@ -2,110 +2,206 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Assistance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Teruel Omega AI</title>
   <style>
-    body {
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: #0a0a0a;
+      background: radial-gradient(circle at top, #1e3c72, #0f2027);
       color: white;
-      height: 100vh;
+      height: 100dvh;                    /* Dynamic height for mobile keyboards */
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    
+
+    /* Header */
+    header {
+      padding: 16px 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    #clearBtn {
+      padding: 8px 18px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Chat Container */
     #chatContainer {
       flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      background: #111;
       display: flex;
       flex-direction: column;
+      background: #0a0a0a;
+      overflow: hidden;
+      padding: 20px 16px;
       gap: 15px;
-      padding-bottom: 120px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
     }
-    
+
     .message {
       max-width: 85%;
       padding: 14px 18px;
       border-radius: 18px;
       line-height: 1.5;
     }
-    
+
     .user {
       align-self: flex-end;
-      background: #f97316;
+      background: linear-gradient(45deg, #ff0080, #ff8c00);
       color: white;
     }
-    
+
     .assistant {
       align-self: flex-start;
-      background: #2a2a2a;
-      color: white;
+      background: #1e1e1e;
+      color: #e6e6e6;
     }
-    
+
     img {
       max-width: 100%;
       border-radius: 12px;
       margin-top: 8px;
     }
-    
+
+    /* Input Area */
     .input-area {
-      padding: 16px;
-      background: #1f1f1f;
+      padding: 12px 16px;
+      background: #111;
       border-top: 1px solid #333;
       flex-shrink: 0;
     }
-    
+
+    #imagePreview {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      max-height: 100px;
+      overflow-x: auto;
+      padding: 4px 0 8px;
+    }
+
     #imagePreview img {
       height: 85px;
       border-radius: 10px;
       object-fit: cover;
       border: 2px solid #555;
     }
+
+    /* Input Row */
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upload-label {
+      cursor: pointer;
+      font-size: 28px;
+      padding: 8px;
+      border-radius: 50%;
+      color: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 14px 20px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 30px;
+      color: white;
+      font-size: 16px;
+      outline: none;
+    }
+
+    #userInput:focus {
+      border-color: #ff0080;
+      box-shadow: 0 0 0 3px rgba(255, 0, 128, 0.15);
+    }
+
+    #sendBtn {
+      padding: 14px 26px;
+      background: linear-gradient(45deg, #ff0080, #ff8c00);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Scrollbar */
+    #chatContainer::-webkit-scrollbar {
+      width: 5px;
+    }
+    #chatContainer::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    /* Extra safety for small mobile screens */
+    @media (max-width: 480px) {
+      #chatContainer {
+        padding: 16px 12px;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Header with Clear Button -->
-  <div style="padding: 16px 20px; background: #1f1f1f; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
-    <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Teruel Omega AI</h2>
-    <button id="clearBtn" 
-            style="padding: 8px 18px; background: #ef4444; color: white; border: none; border-radius: 20px; font-size: 14px; cursor: pointer;">
-      Clear Chat
-    </button>
-  </div>
+  <!-- Header -->
+  <header>
+    <h2>Teruel Omega AI</h2>
+    <button id="clearBtn">Clear Chat</button>
+  </header>
 
   <!-- Chat Messages Area -->
   <div id="chatContainer"></div>
 
-  <!-- Message Input Area -->
+  <!-- Input Area -->
   <div class="input-area">
     <!-- Image Previews -->
-    <div id="imagePreview" 
-         style="display: flex; gap: 12px; flex-wrap: wrap; max-height: 110px; overflow-x: auto; padding: 4px 0;">
-    </div>
+    <div id="imagePreview"></div>
 
     <!-- Input Row -->
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <label style="cursor: pointer; font-size: 28px; padding: 10px; border-radius: 50%; transition: all 0.2s; color: #ccc;">
+    <div class="input-row">
+      <label class="upload-label">
         📎
         <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
       </label>
 
       <input type="text" id="userInput" 
-             placeholder="Type a message... or upload an image 📸" 
-             style="flex: 1; padding: 14px 20px; background: #2a2a2a; border: 1px solid #444; border-radius: 30px; color: white; font-size: 16px; outline: none;">
+             placeholder="Type a message... or upload an image 📸">
 
-      <button id="sendBtn" 
-              style="padding: 14px 26px; background: #f97316; color: white; border: none; border-radius: 30px; font-weight: 600; cursor: pointer;">
-        Send
-      </button>
+      <button id="sendBtn">Send</button>
     </div>
   </div>
 
   <script src="script.js"></script>
 </body>
-        </html>
+      </html>
