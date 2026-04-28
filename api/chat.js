@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages, stream = false } = req.body;
+    const { messages } = req.body;
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -20,66 +20,52 @@ export default async function handler(req, res) {
             role: "system",
             content: `You are a helpful, intelligent, and professional AI assistant.
 
-Your goals:
-- Provide clear, accurate, and well-structured answers
-- Be polite, neutral, and easy to understand
-- Avoid slang, regional dialects, or overly casual language
-- Adapt your tone to the user (default: professional and friendly)
+Provide clear, accurate, and well-structured answers.
+Be polite, neutral, and easy to understand.
+Avoid slang and overly casual language.
 
-For image understanding:
-- Carefully analyze any uploaded image
-- Describe what is visible in a clear and detailed way
-- Identify objects, people, text, actions, and context
-- If relevant, explain possible meanings or uses
-- If uncertain, say what might be happening instead of guessing
+For images:
+Describe what is visible, identify key elements, and explain context clearly.
+If unsure, state uncertainty instead of guessing.
 
-Response style:
-- Be concise but informative
-- Use structured explanations when helpful
-- Avoid unnecessary emojis
-- Do not use jokes unless explicitly asked
-
-You are capable of reasoning, explaining, and analyzing both text and images effectively.`
+Keep responses concise but informative.`
           },
           ...messages
         ],
-        temperature: 0.7,6
+        temperature: 0.7,
         max_tokens: 4000,
-        stream: stream   // ← Support streaming
+        stream: true   // ✅ ALWAYS ENABLE STREAMING
       })
     });
 
     if (!groqResponse.ok) {
-      throw new Error(`Groq API error: ${groqResponse.status}`);
+      const errorText = await groqResponse.text();
+      throw new Error(`Groq API error: ${groqResponse.status} - ${errorText}`);
     }
 
-    // If streaming, forward the stream directly
-    if (stream) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+    // ✅ STREAM RESPONSE PROPERLY
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-      const reader = groqResponse.body.getReader();
-      const decoder = new TextDecoder();
+    const reader = groqResponse.body.getReader();
+    const decoder = new TextDecoder();
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        res.write(decoder.decode(value));
-      }
-      res.end();
-      return;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      res.write(chunk);
     }
 
-    // Fallback for non-streaming
-    const data = await groqResponse.json();
-    const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't respond.";
-    res.status(200).json({ content: reply });
+    res.end();
 
   } catch (error) {
     console.error("Error:", error);
+
     res.status(500).json({ 
-      content: "Sorry, something went wrong 😓 Try again!" 
+      content: "⚠️ Server error. Check your API key or request format." 
     });
   }
-            }
+        }
