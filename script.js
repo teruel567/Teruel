@@ -27,7 +27,7 @@ function restoreChat() {
   }
 
   chatHistory.forEach(msg => {
-    addMessage(msg.role, msg.content);
+    addMessage(msg.role, msg.display || msg.content);
   });
 }
 
@@ -77,8 +77,16 @@ function addMessage(role, text) {
 
   chatContainer.appendChild(bubble);
   scrollToBottom();
+}
 
-  return bubble;
+// ===================== STREAMING =====================
+function createStreamingBubble() {
+  const bubble = document.createElement('div');
+  bubble.className = 'message assistant';
+  bubble.innerHTML = `<p class="streaming-text">...</p>`;
+  chatContainer.appendChild(bubble);
+  scrollToBottom();
+  return bubble.querySelector('.streaming-text');
 }
 
 // ===================== SEND MESSAGE =====================
@@ -88,48 +96,53 @@ async function sendMessage() {
 
   addMessage('user', text || '📸 Image sent');
 
+  // ⚠️ Only send TEXT to backend (safe for your model)
   chatHistory.push({
     role: "user",
-    content: text || "User sent an image"
+    content: text || "User sent an image",
+    display: text || "📸 Image sent"
   });
 
   userInput.value = '';
   selectedImages = [];
   renderPreviews();
 
-  // loading bubble
-  const loadingBubble = addMessage('assistant', '...');
+  const streamingEl = createStreamingBubble();
+  let fullResponse = '';
 
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory })
+      body: JSON.stringify({
+        messages: chatHistory,
+        stream: false
+      })
     });
 
     if (!response.ok) {
       throw new Error("API error: " + response.status);
     }
+const data = await response.json();
 
-    const data = await response.json();
+const reply = data.content || "No response from AI";
 
-    // replace loading text
-    loadingBubble.innerHTML = window.marked
-      ? marked.parse(data.content)
-      : `<p>${data.content}</p>`;
+streamingEl.innerHTML = marked.parse(reply);
+scrollToBottom();
+
+fullResponse = reply;
 
     chatHistory.push({
       role: "assistant",
-      content: data.content
+      content: fullResponse,
+      display: fullResponse
     });
 
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
-    scrollToBottom();
-
   } catch (err) {
     console.error(err);
-    loadingBubble.innerHTML = `<p>⚠️ ${err.message}</p>`;
+    streamingEl.textContent = "⚠️ Error: " + err.message;
   }
 }
 
