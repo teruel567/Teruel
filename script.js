@@ -17,13 +17,7 @@ function scrollToBottom() {
 
 // ===================== WELCOME =====================
 function addWelcome() {
-  const welcome = document.createElement('div');
-  welcome.className = 'message assistant';
-  welcome.innerHTML = `
-    <p>Hello! I’m your AI assistant.<br>
-    How can I help you today? You can send a message or upload an image.</p>
-  `;
-  chatContainer.appendChild(welcome);
+  addMessage("assistant", "Hello! I’m your AI assistant. How can I help you today?");
 }
 
 function restoreChat() {
@@ -33,7 +27,7 @@ function restoreChat() {
   }
 
   chatHistory.forEach(msg => {
-    addMessage(msg.role, msg.content, msg.images || []);
+    addMessage(msg.role, msg.display || msg.content);
   });
 }
 
@@ -73,44 +67,25 @@ function renderPreviews() {
 }
 
 // ===================== MESSAGE =====================
-function addMessage(role, text, images = []) {
+function addMessage(role, text) {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
 
-  let html = '';
+  bubble.innerHTML = role === "assistant" && window.marked
+    ? marked.parse(text)
+    : `<p>${text}</p>`;
 
-  if (role === "assistant" && window.marked) {
-    html += marked.parse(text);
-  } else {
-    html += `<p>${text}</p>`;
-  }
-
-  images.forEach(src => {
-    html += `<img src="${src}" style="max-width:100%;border-radius:10px;margin-top:8px;">`;
-  });
-
-  bubble.innerHTML = html;
   chatContainer.appendChild(bubble);
   scrollToBottom();
-
-  if (role === "assistant" && window.hljs) {
-    document.querySelectorAll("pre code").forEach(el => {
-      hljs.highlightElement(el);
-    });
-  }
-
-  return bubble;
 }
 
-// ===================== STREAMING BUBBLE =====================
+// ===================== STREAMING =====================
 function createStreamingBubble() {
   const bubble = document.createElement('div');
   bubble.className = 'message assistant';
-
   bubble.innerHTML = `<p class="streaming-text">...</p>`;
   chatContainer.appendChild(bubble);
   scrollToBottom();
-
   return bubble.querySelector('.streaming-text');
 }
 
@@ -119,15 +94,14 @@ async function sendMessage() {
   const text = userInput.value.trim();
   if (!text && selectedImages.length === 0) return;
 
-  addMessage('user', text || '📸 Image sent', selectedImages);
+  addMessage('user', text || '📸 Image sent');
 
+  // ⚠️ Only send TEXT to backend (safe for your model)
   chatHistory.push({
     role: "user",
-    content: text,
-    images: selectedImages
+    content: text || "User sent an image",
+    display: text || "📸 Image sent"
   });
-
-  const currentImages = [...selectedImages];
 
   userInput.value = '';
   selectedImages = [];
@@ -141,9 +115,14 @@ async function sendMessage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: chatHistory
+        messages: chatHistory,
+        stream: true
       })
     });
+
+    if (!response.ok) {
+      throw new Error("API error: " + response.status);
+    }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -165,14 +144,9 @@ async function sendMessage() {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
 
-            if (delta) {
+            if (typeof delta === "string") {
               fullResponse += delta;
               streamingEl.innerHTML = marked.parse(fullResponse);
-
-              document.querySelectorAll("pre code").forEach(el => {
-                hljs.highlightElement(el);
-              });
-
               scrollToBottom();
             }
           } catch {}
@@ -182,14 +156,15 @@ async function sendMessage() {
 
     chatHistory.push({
       role: "assistant",
-      content: fullResponse
+      content: fullResponse,
+      display: fullResponse
     });
 
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
     console.error(err);
-    streamingEl.textContent = "⚠️ Something went wrong.";
+    streamingEl.textContent = "⚠️ Error: " + err.message;
   }
 }
 
