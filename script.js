@@ -1,27 +1,43 @@
-// script.js - Streaming Version
+// ===================== STATE =====================
 let selectedImages = [];
+let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
 
+// ===================== ELEMENTS =====================
 const imageUpload = document.getElementById('imageUpload');
 const imagePreview = document.getElementById('imagePreview');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
+const clearBtn = document.getElementById('clearBtn');
 
-// Welcome message
-function addWelcome() {
-  const welcome = document.createElement('div');
-  welcome.className = 'message assistant';
-  welcome.innerHTML = `<p>Hey! 👋 I'm your AI assistant from Lagos. How can I help you today? Send a message or upload an image 📸</p>`;
-  chatContainer.appendChild(welcome);
-  scrollToBottom();
-}
-addWelcome();
-
+// ===================== SCROLL =====================
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Image upload + preview
+// ===================== WELCOME =====================
+function addWelcome() {
+  const welcome = document.createElement('div');
+  welcome.className = 'message assistant';
+  welcome.innerHTML = `
+    <p>Hello! I’m your AI assistant.<br>
+    How can I help you today? You can send a message or upload an image.</p>
+  `;
+  chatContainer.appendChild(welcome);
+}
+
+function restoreChat() {
+  if (chatHistory.length === 0) {
+    addWelcome();
+    return;
+  }
+
+  chatHistory.forEach(msg => {
+    addMessage(msg.role, msg.content, msg.images || []);
+  });
+}
+
+// ===================== IMAGE HANDLING =====================
 imageUpload.addEventListener('change', (e) => {
   const files = Array.from(e.target.files || []);
   files.forEach(file => {
@@ -41,79 +57,93 @@ function renderPreviews() {
   selectedImages.forEach((base64, index) => {
     const div = document.createElement('div');
     div.style.position = 'relative';
+
     div.innerHTML = `
-      <img src="${base64}" style="height:85px; border-radius:10px; object-fit:cover; border:2px solid #555;">
-      <button style="position:absolute; top:-8px; right:-8px; background:#ef4444; color:white; border:none; border-radius:50%; width:24px; height:24px; font-size:14px; cursor:pointer;">×</button>
+      <img src="${base64}" style="height:85px;border-radius:10px;border:2px solid #555;">
+      <button style="position:absolute;top:-8px;right:-8px;background:red;color:white;border:none;border-radius:50%;width:22px;height:22px;">×</button>
     `;
+
     div.querySelector('button').onclick = () => {
       selectedImages.splice(index, 1);
       renderPreviews();
     };
+
     imagePreview.appendChild(div);
   });
 }
 
-// Add message (for user and final assistant)
+// ===================== MESSAGE =====================
 function addMessage(role, text, images = []) {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
-  
-  let html = `<p style="margin: 0 0 10px 0;">${text}</p>`;
-  if (images && images.length > 0) {
-    images.forEach(src => {
-      html += `<img src="${src}" style="max-width:100%; border-radius:12px; margin-top:8px;">`;
-    });
+
+  let html = '';
+
+  if (role === "assistant" && window.marked) {
+    html += marked.parse(text);
+  } else {
+    html += `<p>${text}</p>`;
   }
+
+  images.forEach(src => {
+    html += `<img src="${src}" style="max-width:100%;border-radius:10px;margin-top:8px;">`;
+  });
+
   bubble.innerHTML = html;
   chatContainer.appendChild(bubble);
   scrollToBottom();
+
+  if (role === "assistant" && window.hljs) {
+    document.querySelectorAll("pre code").forEach(el => {
+      hljs.highlightElement(el);
+    });
+  }
+
+  return bubble;
 }
 
-// Create a streaming assistant bubble
+// ===================== STREAMING BUBBLE =====================
 function createStreamingBubble() {
   const bubble = document.createElement('div');
   bubble.className = 'message assistant';
-  bubble.innerHTML = `<p id="streaming-text"></p>`;
+
+  bubble.innerHTML = `<p class="streaming-text">...</p>`;
   chatContainer.appendChild(bubble);
   scrollToBottom();
-  return bubble.querySelector('#streaming-text');
+
+  return bubble.querySelector('.streaming-text');
 }
 
-// Send message with streaming
+// ===================== SEND MESSAGE =====================
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text && selectedImages.length === 0) return;
 
-  // Show user message
-  addMessage('user', text || '📸 Image(s) sent', selectedImages);
+  addMessage('user', text || '📸 Image sent', selectedImages);
+
+  chatHistory.push({
+    role: "user",
+    content: text,
+    images: selectedImages
+  });
 
   const currentImages = [...selectedImages];
+
   userInput.value = '';
   selectedImages = [];
   renderPreviews();
 
-  // Create streaming bubble
-  const streamingTextEl = createStreamingBubble();
+  const streamingEl = createStreamingBubble();
   let fullResponse = '';
 
   try {
-    const content = [];
-    content.push({ type: "text", text: text || "Please analyze these images and describe what you see in detail." });
-
-    currentImages.forEach(base64 => {
-      content.push({ type: "image_url", image_url: { url: base64 } });
-    });
-
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: 'user', content }],
-        stream: true   // ← Enable streaming
+        messages: chatHistory
       })
     });
-
-    if (!response.ok) throw new Error('API error');
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -125,43 +155,59 @@ async function sendMessage() {
       const chunk = decoder.decode(value);
       const lines = chunk.split('\n');
 
-      for (const line of lines) {
+      for (let line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+          const data = line.replace('data: ', '');
+
           if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content || '';
+            const delta = parsed.choices?.[0]?.delta?.content;
+
             if (delta) {
               fullResponse += delta;
-              streamingTextEl.textContent = fullResponse;
+              streamingEl.innerHTML = marked.parse(fullResponse);
+
+              document.querySelectorAll("pre code").forEach(el => {
+                hljs.highlightElement(el);
+              });
+
               scrollToBottom();
             }
-          } catch (e) {
-            // Ignore parsing errors for incomplete chunks
-          }
+          } catch {}
         }
       }
     }
 
+    chatHistory.push({
+      role: "assistant",
+      content: fullResponse
+    });
+
+    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+
   } catch (err) {
     console.error(err);
-    streamingTextEl.textContent = "Sorry, something went wrong 😓 Try again!";
+    streamingEl.textContent = "⚠️ Something went wrong.";
   }
 }
 
-// Events
+// ===================== EVENTS =====================
 sendBtn.addEventListener('click', sendMessage);
+
 userInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') sendMessage();
 });
-// Clear Chat Functionality
-const clearBtn = document.getElementById('clearBtn');
 
 clearBtn.addEventListener('click', () => {
-  if (confirm("Clear the entire chat? This cannot be undone.")) {
-    chatContainer.innerHTML = '';   // Clear all messages
-    addWelcome();                   // Show welcome message again
+  if (confirm("Clear chat?")) {
+    chatHistory = [];
+    localStorage.removeItem("chatHistory");
+    chatContainer.innerHTML = '';
+    addWelcome();
   }
 });
+
+// ===================== INIT =====================
+restoreChat();
