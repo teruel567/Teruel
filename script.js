@@ -77,6 +77,8 @@ function addMessage(role, text) {
 
   chatContainer.appendChild(bubble);
   scrollToBottom();
+
+  return bubble;
 }
 
 // ===================== SEND MESSAGE =====================
@@ -86,7 +88,6 @@ async function sendMessage() {
 
   addMessage('user', text || '📸 Image sent');
 
-  // Only send text (safe for your current backend)
   chatHistory.push({
     role: "user",
     content: text || "User sent an image"
@@ -96,7 +97,7 @@ async function sendMessage() {
   selectedImages = [];
   renderPreviews();
 
-  // Show temporary loading message
+  // loading bubble
   const loadingBubble = addMessage('assistant', '...');
 
   try {
@@ -112,12 +113,11 @@ async function sendMessage() {
 
     const data = await response.json();
 
-    // Replace loading text with real response
+    // replace loading text
     loadingBubble.innerHTML = window.marked
       ? marked.parse(data.content)
       : `<p>${data.content}</p>`;
 
-    // Save response
     chatHistory.push({
       role: "assistant",
       content: data.content
@@ -129,7 +129,7 @@ async function sendMessage() {
 
   } catch (err) {
     console.error(err);
-    loadingBubble.innerHTML = `<p>⚠️ Error: ${err.message}</p>`;
+    loadingBubble.innerHTML = `<p>⚠️ ${err.message}</p>`;
   }
 }
 
