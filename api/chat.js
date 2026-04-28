@@ -13,48 +13,28 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192", // ✅ FIXED MODEL
-        messages: [
-          {
-            role: "system",
-            content: `You are a helpful, professional AI assistant.
-Provide clear, accurate, and concise responses.`
-          },
-          ...messages
-        ],
+        model: "llama3-8b-8192",
+        messages: messages,
         temperature: 0.7,
-        max_tokens: 1024, // ✅ SAFER
-        stream: true
+        max_tokens: 1024,
+        stream: false   // 🔥 IMPORTANT
       })
     });
 
+    const data = await groqResponse.json();
+
     if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      throw new Error(`Groq API error: ${groqResponse.status} - ${errorText}`);
+      throw new Error(JSON.stringify(data));
     }
 
-    // ✅ STREAM RESPONSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    const reply = data.choices?.[0]?.message?.content || "No response";
 
-    const reader = groqResponse.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      res.write(decoder.decode(value));
-    }
-
-    res.end();
+    res.status(200).json({ content: reply });
 
   } catch (error) {
-    console.error("FULL ERROR:", error);
-
+    console.error("REAL ERROR:", error);
     res.status(500).json({ 
-      content: "⚠️ Server error: " + error.message 
+      content: "⚠️ " + error.message 
     });
   }
-          }
+                                     }
