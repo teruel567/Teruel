@@ -1,4 +1,3 @@
-// api/chat.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -14,27 +13,18 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "llama3-8b-8192", // ✅ FIXED MODEL
         messages: [
           {
             role: "system",
-            content: `You are a helpful, intelligent, and professional AI assistant.
-
-Provide clear, accurate, and well-structured answers.
-Be polite, neutral, and easy to understand.
-Avoid slang and overly casual language.
-
-For images:
-Describe what is visible, identify key elements, and explain context clearly.
-If unsure, state uncertainty instead of guessing.
-
-Keep responses concise but informative.`
+            content: `You are a helpful, professional AI assistant.
+Provide clear, accurate, and concise responses.`
           },
           ...messages
         ],
         temperature: 0.7,
-        max_tokens: 4000,
-        stream: true   // ✅ ALWAYS ENABLE STREAMING
+        max_tokens: 1024, // ✅ SAFER
+        stream: true
       })
     });
 
@@ -43,7 +33,7 @@ Keep responses concise but informative.`
       throw new Error(`Groq API error: ${groqResponse.status} - ${errorText}`);
     }
 
-    // ✅ STREAM RESPONSE PROPERLY
+    // ✅ STREAM RESPONSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -55,17 +45,16 @@ Keep responses concise but informative.`
       const { value, done } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      res.write(chunk);
+      res.write(decoder.decode(value));
     }
 
     res.end();
 
   } catch (error) {
-    console.error("Error:", error);
+    console.error("FULL ERROR:", error);
 
     res.status(500).json({ 
-      content: "⚠️ Server error. Check your API key or request format." 
+      content: "⚠️ Server error: " + error.message 
     });
   }
-        }
+          }
