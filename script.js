@@ -27,7 +27,7 @@ function restoreChat() {
   }
 
   chatHistory.forEach(msg => {
-    addMessage(msg.role, msg.display || msg.content);
+    addMessage(msg.role, msg.content);
   });
 }
 
@@ -79,16 +79,6 @@ function addMessage(role, text) {
   scrollToBottom();
 }
 
-// ===================== STREAMING =====================
-function createStreamingBubble() {
-  const bubble = document.createElement('div');
-  bubble.className = 'message assistant';
-  bubble.innerHTML = `<p class="streaming-text">...</p>`;
-  chatContainer.appendChild(bubble);
-  scrollToBottom();
-  return bubble.querySelector('.streaming-text');
-}
-
 // ===================== SEND MESSAGE =====================
 async function sendMessage() {
   const text = userInput.value.trim();
@@ -96,75 +86,50 @@ async function sendMessage() {
 
   addMessage('user', text || '📸 Image sent');
 
-  // ⚠️ Only send TEXT to backend (safe for your model)
+  // Only send text (safe for your current backend)
   chatHistory.push({
     role: "user",
-    content: text || "User sent an image",
-    display: text || "📸 Image sent"
+    content: text || "User sent an image"
   });
 
   userInput.value = '';
   selectedImages = [];
   renderPreviews();
 
-  const streamingEl = createStreamingBubble();
-  let fullResponse = '';
+  // Show temporary loading message
+  const loadingBubble = addMessage('assistant', '...');
 
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chatHistory,
-        stream: true
-      })
+      body: JSON.stringify({ messages: chatHistory })
     });
 
     if (!response.ok) {
       throw new Error("API error: " + response.status);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+    const data = await response.json();
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+    // Replace loading text with real response
+    loadingBubble.innerHTML = window.marked
+      ? marked.parse(data.content)
+      : `<p>${data.content}</p>`;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (let line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.replace('data: ', '');
-
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-
-            if (typeof delta === "string") {
-              fullResponse += delta;
-              streamingEl.innerHTML = marked.parse(fullResponse);
-              scrollToBottom();
-            }
-          } catch {}
-        }
-      }
-    }
-
+    // Save response
     chatHistory.push({
       role: "assistant",
-      content: fullResponse,
-      display: fullResponse
+      content: data.content
     });
 
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
+    scrollToBottom();
+
   } catch (err) {
     console.error(err);
-    streamingEl.textContent = "⚠️ Error: " + err.message;
+    loadingBubble.innerHTML = `<p>⚠️ Error: ${err.message}</p>`;
   }
 }
 
