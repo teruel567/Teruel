@@ -1,21 +1,15 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
 
   try {
     const { messages, businessData } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
-      res.write(`data: ${JSON.stringify({ content: "Server error: Missing API key" })}\n\n`);
-      return res.end();
+      return res.status(500).json({ error: "Missing API key" });
     }
 
-    // ✅ FIXED system prompt
     const systemPrompt = `
 You are Omega Mobile Store AI assistant.
 
@@ -23,13 +17,12 @@ Store Info:
 ${businessData}
 
 Rules:
-- Only answer questions about the store (products, delivery, refunds, support)
-- If question is unrelated, politely redirect user back to store topics
-- Keep answers short and helpful
-- Sound like a real human customer support agent
+- Only answer store-related questions
+- Max 2 sentences
+- Be direct
 `;
 
-    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,47 +33,17 @@ Rules:
         messages: [
           { role: "system", content: systemPrompt },
           ...messages
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-        stream: true
+        ]
       })
     });
 
-    if (!groqResponse.ok) {
-      const error = await groqResponse.json().catch(() => ({}));
-      res.write(`data: ${JSON.stringify({ content: "Error: " + (error.error?.message || "Failed to connect") })}\n\n`);
-      return res.end();
-    }
+    const data = await response.json();
 
-    const reader = groqResponse.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-          try {
-            const data = JSON.parse(line.slice(6));
-            const content = data.choices?.[0]?.delta?.content || '';
-            if (content) {
-              res.write(`data: ${JSON.stringify({ content })}\n\n`);
-            }
-          } catch (e) {}
-        }
-      }
-    }
-
-    res.end();
+    return res.status(200).json({
+      reply: data.choices?.[0]?.message?.content || "No response"
+    });
 
   } catch (error) {
-    console.error(error);
-    res.write(`data: ${JSON.stringify({ content: "⚠️ Something went wrong." })}\n\n`);
-    res.end();
+    return res.status(500).json({ error: "Server error" });
   }
-                                   }
+      }
