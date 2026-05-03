@@ -238,3 +238,32 @@ header h2 {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
     }
+/* MOBILE SIDEBAR */
+#menuBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  #menuBtn {
+    display: inline-block;
+  }
+
+  .sidebar {
+    position: absolute;
+    left: -260px;
+    top: 0;
+    height: 100%;
+    transition: 0.3s;
+    z-index: 100;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+  }
