@@ -9,46 +9,21 @@
 
 <body>
 
-<div class="app">
+<!-- HEADER -->
+<header class="header">
+  <h2>Omega AI Assistant</h2>
+  <button id="clearBtn">Clear</button>
+</header>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <button onclick="createNewChat()">+ New Chat</button>
-    <div id="chatList"></div>
-  </div>
+<!-- CHAT -->
+<div id="chatContainer"></div>
 
-  <!-- MAIN -->
-  <div class="main">
-
-    <!-- HEADER -->
-    <header>
-      <button id="menuBtn">☰</button>
-
-      <h2>Omega AI Assistant</h2>
-
-      <div>
-        <button id="downloadBtn">Export</button>
-        <button id="clearBtn">Clear</button>
-      </div>
-    </header>
-
-    <!-- CHAT -->
-    <div id="chatContainer"></div>
-
-    <!-- INPUT -->
-    <div class="input-area">
-      <div class="input-row">
-        <input id="userInput" placeholder="Type a message..." />
-        <button id="sendBtn">Send</button>
-      </div>
-    </div>
-
-  </div>
+<!-- INPUT -->
+<div class="input-area">
+  <input id="userInput" placeholder="Type a message..." />
+  <button id="sendBtn">Send</button>
 </div>
-
-<!-- OVERLAY -->
-<div id="overlay" class="overlay"></div>
 
 <script src="script.js"></script>
 </body>
-    </html>
+  </html>
