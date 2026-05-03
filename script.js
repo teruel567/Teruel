@@ -122,16 +122,13 @@ async function sendMessage() {
   addMessage("user", text);
   chats[currentChatId].messages.push({ role: "user", content: text });
 
-  // Auto title
   if (chats[currentChatId].messages.length === 1) {
     chats[currentChatId].title = text.slice(0, 25);
   }
 
   userInput.value = "";
 
-  // Typing indicator
   const typing = addMessage("assistant", "...");
-  let fullResponse = "";
 
   try {
     const res = await fetch("/api/chat", {
@@ -145,34 +142,13 @@ async function sendMessage() {
       })
     });
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
+    const data = await res.json();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n");
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const data = JSON.parse(line.slice(6));
-
-            if (data.content) {
-              fullResponse += data.content;
-              typing.textContent = fullResponse;
-              scrollToBottom();
-            }
-          } catch {}
-        }
-      }
-    }
+    typing.textContent = data.reply;
 
     chats[currentChatId].messages.push({
       role: "assistant",
-      content: fullResponse
+      content: data.reply
     });
 
     save();
