@@ -14,14 +14,12 @@ body {
   overflow: hidden;
 }
 
+/* HEADER */
 header {
   padding: 16px 20px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
 }
 
 header h2 {
@@ -29,6 +27,7 @@ header h2 {
   font-weight: 600;
 }
 
+/* BUTTONS */
 #clearBtn {
   padding: 8px 18px;
   background: #ef4444;
@@ -38,6 +37,7 @@ header h2 {
   font-size: 14px;
   cursor: pointer;
 }
+
 #downloadBtn {
   background: #222;
   color: white;
@@ -51,6 +51,8 @@ header h2 {
 #downloadBtn:hover {
   background: #333;
 }
+
+/* CHAT */
 #chatContainer {
   flex: 1;
   padding: 20px 16px;
@@ -63,7 +65,7 @@ header h2 {
 }
 
 .message {
-  max-width: 85%;
+  max-width: 75%;
   padding: 14px 18px;
   border-radius: 18px;
   line-height: 1.5;
@@ -81,16 +83,19 @@ header h2 {
   color: #e6e6e6;
 }
 
+.message p {
+  margin: 0;
+}
+
+/* INPUT */
 .input-area {
   padding: 12px 16px 20px;
   background: #111;
   border-top: 1px solid #333;
-  flex-shrink: 0;
 }
 
 .input-row {
   display: flex;
-  align-items: center;
   gap: 8px;
 }
 
@@ -124,27 +129,24 @@ header h2 {
 #sendBtn:hover {
   opacity: 0.9;
 }
-@media (max-width: 480px) {
-  #userInput, #sendBtn {
-    font-size: 15.5px;
-  }
+
+#sendBtn:active {
+  transform: scale(0.97);
 }
 
-#chatContainer::-webkit-scrollbar {
-  width: 6px;
-}
-#chatContainer::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 10px;
+#sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Quick buttons */
+/* QUICK BUTTONS */
 .quick-questions {
   display: flex;
   gap: 8px;
   padding: 10px;
   overflow-x: auto;
 }
+
 .quick-questions button {
   background: #1a1a1a;
   border: 1px solid #333;
@@ -159,7 +161,21 @@ header h2 {
   background: #333;
 }
 
-/* Animation */
+.quick-questions button:active {
+  transform: scale(0.95);
+}
+
+/* SCROLLBAR */
+#chatContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+#chatContainer::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+}
+
+/* ANIMATIONS */
 .message.assistant {
   animation: fadeIn 0.3s ease;
 }
@@ -174,6 +190,8 @@ header h2 {
     transform: translateY(0);
   }
 }
+
+/* TYPING */
 .typing {
   letter-spacing: 3px;
   animation: blink 1s infinite;
@@ -182,8 +200,4 @@ header h2 {
 @keyframes blink {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
-}
-#sendBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  }
+    }
