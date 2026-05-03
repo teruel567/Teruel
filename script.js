@@ -10,21 +10,21 @@ Customer support is available 24/7.
 
 // ================= STATE =================
 let chats = JSON.parse(localStorage.getItem("chats")) || {};
-let currentChatId = localStorage.getItem("currentChatId") || null;
+let currentChatId = localStorage.getItem("currentChatId");
 let isLoading = false;
 
 // ================= ELEMENTS =================
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-const chatContainer = document.getElementById('chatContainer');
-const clearBtn = document.getElementById('clearBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const chatList = document.getElementById('chatList');
-const menuBtn = document.getElementById('menuBtn');
-const sidebar = document.querySelector('.sidebar');
+const chatContainer = document.getElementById("chatContainer");
+const userInput = document.getElementById("userInput");
+const chatList = document.getElementById("chatList");
+const sendBtn = document.getElementById("sendBtn");
+
+const menuBtn = document.getElementById("menuBtn");
+const sidebar = document.querySelector(".sidebar");
+const overlay = document.getElementById("overlay");
 
 // ================= STORAGE =================
-function saveChats() {
+function save() {
   localStorage.setItem("chats", JSON.stringify(chats));
   localStorage.setItem("currentChatId", currentChatId);
 }
@@ -39,117 +39,99 @@ function createNewChat() {
   };
 
   currentChatId = id;
-  saveChats();
-  renderChatList();
-  renderChat();
+  save();
+  renderChats();
+  renderMessages();
 }
 
-function switchChat(id) {
-  currentChatId = id;
-  saveChats();
-  renderChatList();
-  renderChat();
-
-  if (window.innerWidth < 768) {
-    sidebar.classList.remove("open");
-  }
-}
-
-function deleteChat(id) {
-  delete chats[id];
-  currentChatId = Object.keys(chats)[0] || null;
-  saveChats();
-  renderChatList();
-  renderChat();
-}
-
-function renameChat(id) {
-  const newName = prompt("Rename chat:");
-  if (!newName) return;
-
-  chats[id].title = newName;
-  saveChats();
-  renderChatList();
-}
-
-// ================= UI =================
-function renderChatList() {
+function renderChats() {
   chatList.innerHTML = "";
 
   Object.keys(chats).forEach(id => {
-    const item = document.createElement("div");
-    item.className = "chat-item" + (id === currentChatId ? " active" : "");
-    item.textContent = chats[id].title || "Chat";
+    const div = document.createElement("div");
+    div.className = "chat-item" + (id === currentChatId ? " active" : "");
+    div.textContent = chats[id].title;
 
-    item.onclick = () => switchChat(id);
+    div.onclick = () => {
+      currentChatId = id;
+      save();
+      renderChats();
+      renderMessages();
 
-    item.oncontextmenu = (e) => {
-      e.preventDefault();
-      const action = prompt("Type 'delete' or 'rename'");
-
-      if (action === "delete") deleteChat(id);
-      if (action === "rename") renameChat(id);
+      sidebar.classList.remove("open");
+      overlay.classList.remove("show");
     };
 
-    chatList.appendChild(item);
+    div.oncontextmenu = (e) => {
+      e.preventDefault();
+      const action = prompt("rename/delete");
+
+      if (action === "delete") {
+        delete chats[id];
+      }
+
+      if (action === "rename") {
+        const name = prompt("New name:");
+        if (name) chats[id].title = name;
+      }
+
+      save();
+      renderChats();
+    };
+
+    chatList.appendChild(div);
   });
 }
 
-function renderChat() {
+function renderMessages() {
   chatContainer.innerHTML = "";
-  const chat = chats[currentChatId]?.messages || [];
+  const messages = chats[currentChatId]?.messages || [];
 
-  if (chat.length === 0) {
-    addMessage("assistant").textContent =
-      "👋 Welcome! Ask about products, delivery, or refunds.";
+  if (messages.length === 0) {
+    addMessage("assistant", "👋 Welcome! Ask about products, delivery, or refunds.");
     return;
   }
 
-  chat.forEach(msg => {
-    addMessage(msg.role).textContent = msg.content;
+  messages.forEach(msg => {
+    addMessage(msg.role, msg.content);
   });
 
   scrollToBottom();
 }
 
-function addMessage(role) {
-  const bubble = document.createElement("div");
-  bubble.className = `message ${role}`;
-  bubble.innerHTML = `<p></p>`;
-  chatContainer.appendChild(bubble);
-  return bubble.querySelector("p");
+function addMessage(role, text) {
+  const div = document.createElement("div");
+  div.className = "message " + role;
+  div.textContent = text;
+  chatContainer.appendChild(div);
+  return div;
 }
 
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// ================= SEND =================
+// ================= SEND MESSAGE (REAL API STREAM) =================
 async function sendMessage() {
   const text = userInput.value.trim();
-  if (!text || isLoading || !currentChatId) return;
+  if (!text || isLoading) return;
 
   isLoading = true;
   sendBtn.disabled = true;
 
-  addMessage("user").textContent = text;
+  addMessage("user", text);
   chats[currentChatId].messages.push({ role: "user", content: text });
 
-  // Auto title from first message
+  // Auto title
   if (chats[currentChatId].messages.length === 1) {
-    chats[currentChatId].title = text.slice(0, 20);
+    chats[currentChatId].title = text.slice(0, 25);
   }
 
   userInput.value = "";
 
-  const typing = document.createElement("div");
-  typing.className = "message assistant";
-  typing.innerHTML = `<p class="typing">● ● ●</p>`;
-  chatContainer.appendChild(typing);
-  scrollToBottom();
-
+  // Typing indicator
+  const typing = addMessage("assistant", "...");
   let fullResponse = "";
-  let assistantText = null;
 
   try {
     const res = await fetch("/api/chat", {
@@ -179,13 +161,8 @@ async function sendMessage() {
             const data = JSON.parse(line.slice(6));
 
             if (data.content) {
-              if (!assistantText) {
-                typing.remove();
-                assistantText = addMessage("assistant");
-              }
-
               fullResponse += data.content;
-              assistantText.textContent = fullResponse;
+              typing.textContent = fullResponse;
               scrollToBottom();
             }
           } catch {}
@@ -198,11 +175,10 @@ async function sendMessage() {
       content: fullResponse
     });
 
-    saveChats();
+    save();
 
-  } catch {
-    typing.remove();
-    addMessage("assistant").textContent = "⚠️ Network error.";
+  } catch (err) {
+    typing.textContent = "⚠️ Error connecting to server.";
   }
 
   isLoading = false;
@@ -216,35 +192,21 @@ userInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
 });
 
-clearBtn.onclick = () => {
-  chats[currentChatId].messages = [];
-  saveChats();
-  renderChat();
+// Sidebar toggle
+menuBtn.onclick = () => {
+  sidebar.classList.toggle("open");
+  overlay.classList.toggle("show");
 };
 
-downloadBtn.onclick = () => {
-  const chat = chats[currentChatId]?.messages || [];
-  let text = "";
-
-  chat.forEach(m => {
-    text += `${m.role}: ${m.content}\n\n`;
-  });
-
-  const blob = new Blob([text], { type: "text/plain" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "chat.txt";
-  a.click();
+overlay.onclick = () => {
+  sidebar.classList.remove("open");
+  overlay.classList.remove("show");
 };
-
-// Mobile toggle
-if (menuBtn) {
-  menuBtn.onclick = () => {
-    sidebar.classList.toggle("open");
-  };
-}
 
 // ================= INIT =================
-if (!currentChatId) createNewChat();
-renderChatList();
-renderChat();
+if (!currentChatId) {
+  createNewChat();
+} else {
+  renderChats();
+  renderMessages();
+}
