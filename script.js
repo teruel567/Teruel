@@ -1,188 +1,214 @@
-// ================= BUSINESS DATA =================
-const BUSINESS_INFO = `
-Business Name: Omega Mobile Store
+// ===================== INIT =====================
+document.addEventListener("DOMContentLoaded", () => {
 
-We sell smartphones and accessories.
-We offer a 7-day refund policy.
-We provide free nationwide delivery.
-Customer support is available 24/7.
-`;
+  // ===================== STATE =====================
+  let chats = JSON.parse(localStorage.getItem("chats")) || {};
+  let currentChatId = localStorage.getItem("currentChatId");
+  let isLoading = false;
 
-// ================= STATE =================
-let chats = JSON.parse(localStorage.getItem("chats")) || {};
-let currentChatId = localStorage.getItem("currentChatId");
-let isLoading = false;
-
-// ================= ELEMENTS =================
-const chatContainer = document.getElementById("chatContainer");
-const userInput = document.getElementById("userInput");
-const chatList = document.getElementById("chatList");
-const sendBtn = document.getElementById("sendBtn");
-
-const menuBtn = document.getElementById("menuBtn");
-const sidebar = document.querySelector(".sidebar");
-const overlay = document.getElementById("overlay");
-
-// ================= STORAGE =================
-function save() {
-  localStorage.setItem("chats", JSON.stringify(chats));
-  localStorage.setItem("currentChatId", currentChatId);
-}
-
-// ================= CHAT SYSTEM =================
-function createNewChat() {
-  const id = Date.now().toString();
-
-  chats[id] = {
-    title: "New Chat",
-    messages: []
+  // ===================== BUSINESS DATA =====================
+  const BUSINESS_INFO = {
+    name: "Omega Mobile Store",
+    products: ["smartphones", "accessories"],
+    policies: {
+      refund: "7-day refund policy"
+    }
   };
 
-  currentChatId = id;
-  save();
-  renderChats();
-  renderMessages();
-}
+  // ===================== ELEMENTS =====================
+  const chatContainer = document.getElementById("chatContainer");
+  const userInput = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const clearBtn = document.getElementById("clearBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const newChatBtn = document.getElementById("newChatBtn");
+  const chatList = document.getElementById("chatList");
+  const menuToggle = document.getElementById("menuToggle");
+  const sidebar = document.getElementById("sidebar");
 
-function renderChats() {
-  chatList.innerHTML = "";
+  // ===================== INIT CHAT =====================
+  function initChat() {
+    if (!currentChatId || !chats[currentChatId]) {
+      currentChatId = Date.now().toString();
+      chats[currentChatId] = {
+        title: "New Chat",
+        messages: []
+      };
+      save();
+    }
+  }
 
-  Object.keys(chats).forEach(id => {
+  // ===================== SAVE =====================
+  function save() {
+    localStorage.setItem("chats", JSON.stringify(chats));
+    localStorage.setItem("currentChatId", currentChatId);
+  }
+
+  // ===================== RENDER CHAT =====================
+  function renderChat() {
+    chatContainer.innerHTML = "";
+
+    const messages = chats[currentChatId].messages;
+
+    if (messages.length === 0) {
+      addMessage("assistant", "👋 Welcome! Ask about products, delivery, or refunds.");
+      return;
+    }
+
+    messages.forEach(msg => {
+      addMessage(msg.role, msg.content, false);
+    });
+  }
+
+  // ===================== ADD MESSAGE =====================
+  function addMessage(role, text, saveMessage = true) {
     const div = document.createElement("div");
-    div.className = "chat-item" + (id === currentChatId ? " active" : "");
-    div.textContent = chats[id].title;
+    div.className = `message ${role}`;
+    div.textContent = text;
+    chatContainer.appendChild(div);
 
-    div.onclick = () => {
-      currentChatId = id;
-      save();
-      renderChats();
-      renderMessages();
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
-      sidebar.classList.remove("open");
-      overlay.classList.remove("show");
-    };
+    if (saveMessage) {
+      chats[currentChatId].messages.push({ role, content: text });
 
-    div.oncontextmenu = (e) => {
-      e.preventDefault();
-      const action = prompt("rename/delete");
-
-      if (action === "delete") {
-        delete chats[id];
-      }
-
-      if (action === "rename") {
-        const name = prompt("New name:");
-        if (name) chats[id].title = name;
+      // auto title from first message
+      if (chats[currentChatId].messages.length === 1) {
+        chats[currentChatId].title = text.slice(0, 25);
       }
 
       save();
-      renderChats();
-    };
+      renderChatList();
+    }
 
-    chatList.appendChild(div);
-  });
-}
-
-function renderMessages() {
-  chatContainer.innerHTML = "";
-  const messages = chats[currentChatId]?.messages || [];
-
-  if (messages.length === 0) {
-    addMessage("assistant", "👋 Welcome! Ask about products, delivery, or refunds.");
-    return;
+    return div;
   }
 
-  messages.forEach(msg => {
-    addMessage(msg.role, msg.content);
-  });
+  // ===================== SEND MESSAGE =====================
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text || isLoading) return;
 
-  scrollToBottom();
-}
+    addMessage("user", text);
+    userInput.value = "";
 
-function addMessage(role, text) {
-  const div = document.createElement("div");
-  div.className = "message " + role;
-  div.textContent = text;
-  chatContainer.appendChild(div);
-  return div;
-}
+    isLoading = true;
+    sendBtn.disabled = true;
 
-function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+    const typing = addMessage("assistant", "Typing...", false);
 
-// ================= SEND MESSAGE (REAL API STREAM) =================
-async function sendMessage() {
-  const text = userInput.value.trim();
-  if (!text || isLoading) return;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messages: chats[currentChatId].messages,
+          businessData: BUSINESS_INFO
+        })
+      });
 
-  isLoading = true;
-  sendBtn.disabled = true;
+      const data = await res.json();
 
-  addMessage("user", text);
-  chats[currentChatId].messages.push({ role: "user", content: text });
+      typing.textContent = data.reply || "No response";
 
-  if (chats[currentChatId].messages.length === 1) {
-    chats[currentChatId].title = text.slice(0, 25);
+      chats[currentChatId].messages.push({
+        role: "assistant",
+        content: data.reply
+      });
+
+      save();
+
+    } catch (err) {
+      typing.textContent = "⚠️ Error connecting to server.";
+      console.error(err);
+    }
+
+    isLoading = false;
+    sendBtn.disabled = false;
   }
 
-  userInput.value = "";
-
-  const typing = addMessage("assistant", "...");
-
-  try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        messages: chats[currentChatId].messages,
-        businessData: BUSINESS_INFO
-      })
-    });
-
-    const data = await res.json();
-
-    typing.textContent = data.reply;
-
-    chats[currentChatId].messages.push({
-      role: "assistant",
-      content: data.reply
-    });
-
+  // ===================== CLEAR CHAT =====================
+  function clearChat() {
+    chats[currentChatId].messages = [];
     save();
-
-  } catch (err) {
-    typing.textContent = "⚠️ Error connecting to server.";
+    renderChat();
   }
 
-  isLoading = false;
-  sendBtn.disabled = false;
-}
+  // ===================== EXPORT CHAT =====================
+  function exportChat() {
+    const data = chats[currentChatId].messages
+      .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+      .join("\n\n");
 
-// ================= EVENTS =================
-sendBtn.onclick = sendMessage;
+    const blob = new Blob([data], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "chat.txt";
+    a.click();
+  }
 
-userInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage();
+  // ===================== NEW CHAT =====================
+  function newChat() {
+    currentChatId = Date.now().toString();
+    chats[currentChatId] = {
+      title: "New Chat",
+      messages: []
+    };
+    save();
+    renderChat();
+    renderChatList();
+  }
+
+  // ===================== RENDER CHAT LIST =====================
+  function renderChatList() {
+    if (!chatList) return;
+
+    chatList.innerHTML = "";
+
+    Object.keys(chats).forEach(id => {
+      const item = document.createElement("div");
+      item.className = "chat-item";
+      item.textContent = chats[id].title || "New Chat";
+
+      if (id === currentChatId) {
+        item.classList.add("active");
+      }
+
+      item.onclick = () => {
+        currentChatId = id;
+        save();
+        renderChat();
+        renderChatList();
+        sidebar.classList.remove("open");
+      };
+
+      chatList.appendChild(item);
+    });
+  }
+
+  // ===================== SIDEBAR TOGGLE =====================
+  if (menuToggle && sidebar) {
+    menuToggle.onclick = () => {
+      sidebar.classList.toggle("open");
+    };
+  }
+
+  // ===================== EVENTS =====================
+  sendBtn.onclick = sendMessage;
+
+  userInput.addEventListener("keypress", e => {
+    if (e.key === "Enter") sendMessage();
+  });
+
+  if (clearBtn) clearBtn.onclick = clearChat;
+  if (exportBtn) exportBtn.onclick = exportChat;
+  if (newChatBtn) newChatBtn.onclick = newChat;
+
+  // ===================== START =====================
+  initChat();
+  renderChat();
+  renderChatList();
+
 });
-
-// Sidebar toggle
-menuBtn.onclick = () => {
-  sidebar.classList.toggle("open");
-  overlay.classList.toggle("show");
-};
-
-overlay.onclick = () => {
-  sidebar.classList.remove("open");
-  overlay.classList.remove("show");
-};
-
-// ================= INIT =================
-if (!currentChatId) {
-  createNewChat();
-} else {
-  renderChats();
-  renderMessages();
-}
