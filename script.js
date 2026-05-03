@@ -10,6 +10,7 @@ Customer support is available 24/7.
 
 // ================= STATE =================
 let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+let isLoading = false;
 
 // ================= ELEMENTS =================
 const userInput = document.getElementById('userInput');
@@ -18,6 +19,7 @@ const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 
+// ================= DOWNLOAD =================
 downloadBtn.addEventListener('click', () => {
   let text = "Chat History:\n\n";
 
@@ -33,6 +35,7 @@ downloadBtn.addEventListener('click', () => {
   a.download = "chat.txt";
   a.click();
 });
+
 // ================= FUNCTIONS =================
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -48,7 +51,7 @@ function addMessage(role) {
 
 function addWelcome() {
   const p = addMessage("assistant");
-  p.textContent = "👋 Welcome to Omega Mobile Store! Ask about products, delivery, refunds, or support.";
+  p.textContent = "👋 Welcome! Ask about products, delivery, or refunds.";
 }
 
 function restoreChat() {
@@ -69,6 +72,7 @@ function restoreChat() {
 
 // ================= QUICK ASK =================
 function quickAsk(text) {
+  if (isLoading) return;
   userInput.value = text;
   sendMessage();
 }
@@ -76,18 +80,21 @@ function quickAsk(text) {
 // ================= SEND MESSAGE =================
 async function sendMessage() {
   const text = userInput.value.trim();
-  if (!text) return;
+  if (!text || text.length < 2 || isLoading) return;
 
-  // User message
+  isLoading = true;
+  sendBtn.disabled = true;
+
   addMessage('user').textContent = text;
   chatHistory.push({ role: "user", content: text });
+
   userInput.value = '';
   userInput.focus();
 
   // Typing indicator
   const typingBubble = document.createElement('div');
   typingBubble.className = 'message assistant';
-  typingBubble.innerHTML = '<p class="typing">● ● ●</p>';
+  typingBubble.innerHTML = '<p class="typing">Typing...</p>';
   chatContainer.appendChild(typingBubble);
   scrollToBottom();
 
@@ -120,8 +127,6 @@ async function sendMessage() {
             const data = JSON.parse(line.slice(6));
 
             if (data.content) {
-
-              // Remove typing only when first content arrives
               if (!assistantText) {
                 typingBubble.remove();
                 assistantText = addMessage('assistant');
@@ -131,29 +136,28 @@ async function sendMessage() {
               assistantText.textContent = fullResponse;
               scrollToBottom();
             }
-
           } catch (e) {}
         }
       }
     }
-if (!fullResponse) {
-  if (!assistantText) {
-    typingBubble.remove();
-    assistantText = addMessage('assistant');
-  }
 
-  fullResponse = "⚠️ No response received. Please try again.";
-  assistantText.textContent = fullResponse;
-}
+    if (!fullResponse) {
+      typingBubble.remove();
+      assistantText = addMessage('assistant');
+      assistantText.textContent = "⚠️ No response. Try again.";
+    }
 
-chatHistory.push({ role: "assistant", content: fullResponse });
-localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    chatHistory.push({ role: "assistant", content: fullResponse });
+    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
     console.error(err);
     typingBubble.remove();
-    addMessage('assistant').textContent = "⚠️ Something went wrong. Please try again.";
+    addMessage('assistant').textContent = "⚠️ Error. Try again.";
   }
+
+  isLoading = false;
+  sendBtn.disabled = false;
 }
 
 // ================= EVENTS =================
