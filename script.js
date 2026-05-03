@@ -9,7 +9,8 @@ Customer support is available 24/7.
 `;
 
 // ================= STATE =================
-let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
+let chats = JSON.parse(localStorage.getItem("chats")) || {};
+let currentChatId = localStorage.getItem("currentChatId") || null;
 let isLoading = false;
 
 // ================= ELEMENTS =================
@@ -18,100 +19,124 @@ const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const chatList = document.getElementById('chatList');
 
-// ================= DOWNLOAD =================
-downloadBtn.addEventListener('click', () => {
-  let text = "Chat History:\n\n";
+// ================= STORAGE =================
+function saveChats() {
+  localStorage.setItem("chats", JSON.stringify(chats));
+  localStorage.setItem("currentChatId", currentChatId);
+}
 
-  chatHistory.forEach(msg => {
-    text += `${msg.role.toUpperCase()}: ${msg.content}\n\n`;
+// ================= CHAT SYSTEM =================
+function createNewChat() {
+  const id = Date.now().toString();
+  chats[id] = [];
+  currentChatId = id;
+  saveChats();
+  renderChatList();
+  renderChat();
+}
+
+function switchChat(id) {
+  currentChatId = id;
+  saveChats();
+  renderChatList();
+  renderChat();
+}
+
+function deleteChat(id) {
+  delete chats[id];
+  currentChatId = Object.keys(chats)[0] || null;
+  saveChats();
+  renderChatList();
+  renderChat();
+}
+
+// ================= UI =================
+function renderChatList() {
+  if (!chatList) return;
+  chatList.innerHTML = "";
+
+  Object.keys(chats).forEach(id => {
+    const item = document.createElement("div");
+    item.className = "chat-item" + (id === currentChatId ? " active" : "");
+    item.textContent = "Chat " + id.slice(-4);
+
+    item.onclick = () => switchChat(id);
+
+    item.oncontextmenu = (e) => {
+      e.preventDefault();
+      if (confirm("Delete this chat?")) deleteChat(id);
+    };
+
+    chatList.appendChild(item);
+  });
+}
+
+function renderChat() {
+  chatContainer.innerHTML = "";
+  const chat = chats[currentChatId] || [];
+
+  if (chat.length === 0) {
+    addMessage("assistant").textContent =
+      "👋 Welcome! Ask about products, delivery, or refunds.";
+    return;
+  }
+
+  chat.forEach(msg => {
+    addMessage(msg.role).textContent = msg.content;
   });
 
-  const blob = new Blob([text], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
+  scrollToBottom();
+}
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = "chat.txt";
-  a.click();
-});
+function addMessage(role) {
+  const bubble = document.createElement("div");
+  bubble.className = `message ${role}`;
+  bubble.innerHTML = `<p></p>`;
+  chatContainer.appendChild(bubble);
+  return bubble.querySelector("p");
+}
 
-// ================= FUNCTIONS =================
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function addMessage(role) {
-  const bubble = document.createElement('div');
-  bubble.className = `message ${role}`;
-  bubble.innerHTML = `<p></p>`;
-  chatContainer.appendChild(bubble);
-  return bubble.querySelector('p');
-}
-
-function addWelcome() {
-  const p = addMessage("assistant");
-  p.textContent = "👋 Welcome! Ask about products, delivery, or refunds.";
-}
-
-function restoreChat() {
-  chatContainer.innerHTML = '';
-
-  if (chatHistory.length === 0) {
-    addWelcome();
-    return;
-  }
-
-  chatHistory.forEach(msg => {
-    const p = addMessage(msg.role);
-    p.textContent = msg.content;
-  });
-
-  setTimeout(scrollToBottom, 100);
-}
-
-// ================= QUICK ASK =================
-function quickAsk(text) {
-  if (isLoading) return;
-  userInput.value = text;
-  sendMessage();
-}
-
-// ================= SEND MESSAGE =================
+// ================= SEND =================
 async function sendMessage() {
   const text = userInput.value.trim();
-  if (!text || text.length < 2 || isLoading) return;
+  if (!text || isLoading || !currentChatId) return;
 
   isLoading = true;
   sendBtn.disabled = true;
 
-  addMessage('user').textContent = text;
-  chatHistory.push({ role: "user", content: text });
+  addMessage("user").textContent = text;
+  chats[currentChatId].push({ role: "user", content: text });
 
-  userInput.value = '';
-  userInput.focus();
+  userInput.value = "";
 
-  // Typing indicator
-  const typingBubble = document.createElement('div');
-  typingBubble.className = 'message assistant';
-  typingBubble.innerHTML = '<p class="typing">● ● ●</p>';
-  chatContainer.appendChild(typingBubble);
+  const typing = document.createElement("div");
+  typing.className = "message assistant";
+  typing.innerHTML = `<p class="typing">● ● ●</p>`;
+  chatContainer.appendChild(typing);
   scrollToBottom();
 
-  let fullResponse = '';
+  let fullResponse = "";
   let assistantText = null;
 
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        messages: chatHistory,
+        messages: chats[currentChatId],
         businessData: BUSINESS_INFO
       })
     });
 
-    const reader = response.body.getReader();
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
 
     while (true) {
@@ -119,43 +144,46 @@ async function sendMessage() {
       if (done) break;
 
       const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      const lines = chunk.split("\n");
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
+        if (line.startsWith("data: ")) {
           try {
             const data = JSON.parse(line.slice(6));
 
             if (data.content) {
               if (!assistantText) {
-                typingBubble.remove();
-                assistantText = addMessage('assistant');
+                typing.remove();
+                assistantText = addMessage("assistant");
               }
 
               fullResponse += data.content;
               assistantText.textContent = fullResponse;
               scrollToBottom();
             }
-          } catch (e) {}
+          } catch {}
         }
       }
     }
 
     if (!fullResponse) {
-      typingBubble.remove();
-      assistantText = addMessage('assistant');
+      typing.remove();
+      assistantText = addMessage("assistant");
       fullResponse = "⚠️ No response. Try again.";
       assistantText.textContent = fullResponse;
     }
 
-    chatHistory.push({ role: "assistant", content: fullResponse });
-    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    chats[currentChatId].push({
+      role: "assistant",
+      content: fullResponse
+    });
+
+    saveChats();
 
   } catch (err) {
-    console.error(err);
-    typingBubble.remove();
-    addMessage('assistant').textContent =
-      "⚠️ Network issue. Please check your connection and try again.";
+    typing.remove();
+    addMessage("assistant").textContent =
+      "⚠️ Network issue. Please try again.";
   }
 
   isLoading = false;
@@ -163,19 +191,36 @@ async function sendMessage() {
 }
 
 // ================= EVENTS =================
-sendBtn.addEventListener('click', sendMessage);
+sendBtn.onclick = sendMessage;
 
-userInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendMessage();
+userInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
 });
 
-clearBtn.addEventListener('click', () => {
-  if (confirm("Clear chat?")) {
-    chatHistory = [];
-    localStorage.removeItem("chatHistory");
-    restoreChat();
+clearBtn.onclick = () => {
+  if (confirm("Clear this chat?")) {
+    chats[currentChatId] = [];
+    saveChats();
+    renderChat();
   }
-});
+};
+
+downloadBtn.onclick = () => {
+  const chat = chats[currentChatId] || [];
+  let text = "";
+
+  chat.forEach(m => {
+    text += `${m.role.toUpperCase()}: ${m.content}\n\n`;
+  });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "chat.txt";
+  a.click();
+};
 
 // ================= INIT =================
-restoreChat();
+if (!currentChatId) createNewChat();
+renderChatList();
+renderChat();
