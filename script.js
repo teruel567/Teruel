@@ -37,7 +37,22 @@ downloadBtn.addEventListener('click', () => {
 });
 
 // ================= FUNCTIONS =================
-function scrollToBottom() {
+function restoreChat() {
+  chatContainer.innerHTML = '';
+
+  if (chatHistory.length === 0) {
+    addWelcome();
+    return;
+  }
+
+  chatHistory.forEach(msg => {
+    const p = addMessage(msg.role);
+    p.textContent = msg.content;
+  });
+
+  // ✅ FIXED
+  setTimeout(scrollToBottom, 100);
+} {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
@@ -54,6 +69,14 @@ function addWelcome() {
   p.textContent = "👋 Welcome! Ask about products, delivery, or refunds.";
 }
 
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
 function restoreChat() {
   chatContainer.innerHTML = '';
 
@@ -67,7 +90,8 @@ function restoreChat() {
     p.textContent = msg.content;
   });
 
-  scrollToBottom();
+  // smooth scroll after render
+  setTimeout(scrollToBottom, 100);
 }
 
 // ================= QUICK ASK =================
@@ -151,10 +175,10 @@ async function sendMessage() {
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
-    console.error(err);
-    typingBubble.remove();
-    addMessage('assistant').textContent = "⚠️ Error. Try again.";
-  }
+  console.error(err);
+  typingBubble.remove();
+  addMessage('assistant').textContent = "⚠️ Network issue. Please check your connection and try again.";
+}
 
   isLoading = false;
   sendBtn.disabled = false;
