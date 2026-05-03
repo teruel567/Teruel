@@ -16,7 +16,23 @@ const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
+const downloadBtn = document.getElementById('downloadBtn');
 
+downloadBtn.addEventListener('click', () => {
+  let text = "Chat History:\n\n";
+
+  chatHistory.forEach(msg => {
+    text += `${msg.role.toUpperCase()}: ${msg.content}\n\n`;
+  });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = "chat.txt";
+  a.click();
+});
 // ================= FUNCTIONS =================
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -71,7 +87,7 @@ async function sendMessage() {
   // Typing indicator
   const typingBubble = document.createElement('div');
   typingBubble.className = 'message assistant';
-  typingBubble.innerHTML = '<p>Typing...</p>';
+  typingBubble.innerHTML = '<p class="typing">● ● ●</p>';
   chatContainer.appendChild(typingBubble);
   scrollToBottom();
 
