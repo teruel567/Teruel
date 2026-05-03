@@ -4,12 +4,13 @@ const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
+const businessDataInput = document.getElementById('businessData'); // ✅ NEW
 
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function addMessage(role, content = '') {
+function addMessage(role) {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
   bubble.innerHTML = `<p></p>`;
@@ -35,17 +36,14 @@ function restoreChat() {
   scrollToBottom();
 }
 
-// ===================== STREAMING =====================
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
 
-  // Add user message
   addMessage('user').textContent = text;
   chatHistory.push({ role: "user", content: text });
   userInput.value = '';
 
-  // Create assistant message bubble
   const assistantText = addMessage('assistant');
   scrollToBottom();
 
@@ -55,7 +53,10 @@ async function sendMessage() {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory })
+      body: JSON.stringify({
+        messages: chatHistory,
+        businessData: businessDataInput.value // ✅ FIXED
+      })
     });
 
     const reader = response.body.getReader();
@@ -82,7 +83,6 @@ async function sendMessage() {
       }
     }
 
-    // Save to history
     chatHistory.push({ role: "assistant", content: fullResponse });
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
@@ -92,7 +92,6 @@ async function sendMessage() {
   }
 }
 
-// Event Listeners
 sendBtn.addEventListener('click', sendMessage);
 
 userInput.addEventListener('keypress', (e) => {
@@ -107,5 +106,4 @@ clearBtn.addEventListener('click', () => {
   }
 });
 
-// Initialize
 restoreChat();
