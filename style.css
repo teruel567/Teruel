@@ -1,3 +1,40 @@
+/* ================= LAYOUT ================= */
+.app {
+  display: flex;
+  height: 100dvh;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+  width: 250px;
+  background: #0f0f0f;
+  padding: 10px;
+  border-right: 1px solid #222;
+  overflow-y: auto;
+}
+
+.sidebar button {
+  width: 100%;
+  padding: 10px;
+  background: #222;
+  color: white;
+  border: none;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-item {
+  padding: 10px;
+  background: #1a1a1a;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.chat-item.active {
+  background: #333;
+}
 * {
   margin: 0;
   padding: 0;
