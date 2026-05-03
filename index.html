@@ -4,51 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Omega AI Assistant</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
 
 <div class="app">
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <button onclick="createNewChat()">+ New Chat</button>
-    <div id="chatList"></div>
+  <!-- HEADER -->
+  <header>
+    <h2>Omega AI Assistant</h2>
+    <button id="clearBtn">Clear</button>
+  </header>
+
+  <!-- CHAT -->
+  <div id="chatContainer"></div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <input id="userInput" placeholder="Type a message..." />
+    <button id="sendBtn">Send</button>
   </div>
 
-  <!-- MAIN -->
-  <div class="main">
-
-    <!-- HEADER -->
-    <header>
-      <button id="menuBtn">☰</button>
-
-      <h2>Omega AI Assistant</h2>
-
-      <div>
-        <button id="downloadBtn">Export</button>
-        <button id="clearBtn">Clear</button>
-      </div>
-    </header>
-
-    <!-- CHAT -->
-    <div id="chatContainer"></div>
-
-    <!-- INPUT -->
-    <div class="input-area">
-      <div class="input-row">
-        <input id="userInput" placeholder="Type a message..." />
-        <button id="sendBtn">Send</button>
-      </div>
-    </div>
-
-  </div>
 </div>
-
-<!-- OVERLAY -->
-<div id="overlay" class="overlay"></div>
 
 <script src="script.js"></script>
 </body>
-                              </html>
+</html>
