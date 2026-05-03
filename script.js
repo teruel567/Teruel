@@ -37,22 +37,7 @@ downloadBtn.addEventListener('click', () => {
 });
 
 // ================= FUNCTIONS =================
-function restoreChat() {
-  chatContainer.innerHTML = '';
-
-  if (chatHistory.length === 0) {
-    addWelcome();
-    return;
-  }
-
-  chatHistory.forEach(msg => {
-    const p = addMessage(msg.role);
-    p.textContent = msg.content;
-  });
-
-  // ✅ FIXED
-  setTimeout(scrollToBottom, 100);
-} {
+function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
@@ -69,14 +54,6 @@ function addWelcome() {
   p.textContent = "👋 Welcome! Ask about products, delivery, or refunds.";
 }
 
-function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
 function restoreChat() {
   chatContainer.innerHTML = '';
 
@@ -90,7 +67,6 @@ function restoreChat() {
     p.textContent = msg.content;
   });
 
-  // smooth scroll after render
   setTimeout(scrollToBottom, 100);
 }
 
@@ -118,7 +94,7 @@ async function sendMessage() {
   // Typing indicator
   const typingBubble = document.createElement('div');
   typingBubble.className = 'message assistant';
-  typingBubble.innerHTML = '<p class="typing">Typing...</p>';
+  typingBubble.innerHTML = '<p class="typing">● ● ●</p>';
   chatContainer.appendChild(typingBubble);
   scrollToBottom();
 
@@ -168,17 +144,19 @@ async function sendMessage() {
     if (!fullResponse) {
       typingBubble.remove();
       assistantText = addMessage('assistant');
-      assistantText.textContent = "⚠️ No response. Try again.";
+      fullResponse = "⚠️ No response. Try again.";
+      assistantText.textContent = fullResponse;
     }
 
     chatHistory.push({ role: "assistant", content: fullResponse });
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
-  console.error(err);
-  typingBubble.remove();
-  addMessage('assistant').textContent = "⚠️ Network issue. Please check your connection and try again.";
-}
+    console.error(err);
+    typingBubble.remove();
+    addMessage('assistant').textContent =
+      "⚠️ Network issue. Please check your connection and try again.";
+  }
 
   isLoading = false;
   sendBtn.disabled = false;
