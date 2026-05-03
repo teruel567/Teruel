@@ -9,16 +9,17 @@ function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function addMessage(role, text) {
+function addMessage(role, content = '') {
   const bubble = document.createElement('div');
   bubble.className = `message ${role}`;
-  bubble.innerHTML = `<p>${text}</p>`;
+  bubble.innerHTML = `<p></p>`;
   chatContainer.appendChild(bubble);
-  scrollToBottom();
+  return bubble.querySelector('p');
 }
 
 function addWelcome() {
-  addMessage("assistant", "Hello! I’m your AI assistant. How can I help you today?");
+  const p = addMessage("assistant");
+  p.textContent = "Hello! I’m your AI assistant. How can I help you today?";
 }
 
 function restoreChat() {
@@ -27,23 +28,28 @@ function restoreChat() {
     addWelcome();
     return;
   }
-  chatHistory.forEach(msg => addMessage(msg.role, msg.content));
+  chatHistory.forEach(msg => {
+    const p = addMessage(msg.role);
+    p.textContent = msg.content;
+  });
+  scrollToBottom();
 }
 
+// ===================== STREAMING =====================
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
 
-  addMessage('user', text);
-  
+  // Add user message
+  addMessage('user').textContent = text;
   chatHistory.push({ role: "user", content: text });
   userInput.value = '';
 
-  const loadingBubble = document.createElement('div');
-  loadingBubble.className = 'message assistant';
-  loadingBubble.innerHTML = `<p>Thinking...</p>`;
-  chatContainer.appendChild(loadingBubble);
+  // Create assistant message bubble
+  const assistantText = addMessage('assistant');
   scrollToBottom();
+
+  let fullResponse = '';
 
   try {
     const response = await fetch('/api/chat', {
@@ -52,34 +58,49 @@ async function sendMessage() {
       body: JSON.stringify({ messages: chatHistory })
     });
 
-    const data = await response.json();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-    loadingBubble.remove();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    if (response.ok) {
-      addMessage('assistant', data.content);
-      chatHistory.push({ role: "assistant", content: data.content });
-    } else {
-      addMessage('assistant', data.content || "Sorry, something went wrong.");
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.content) {
+              fullResponse += data.content;
+              assistantText.textContent = fullResponse;
+              scrollToBottom();
+            }
+          } catch (e) {}
+        }
+      }
     }
 
+    // Save to history
+    chatHistory.push({ role: "assistant", content: fullResponse });
     localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
-    loadingBubble.remove();
-    addMessage('assistant', "⚠️ Connection error. Please check your internet.");
     console.error(err);
+    assistantText.textContent = "⚠️ Error occurred while getting response.";
   }
 }
 
 // Event Listeners
 sendBtn.addEventListener('click', sendMessage);
+
 userInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') sendMessage();
 });
 
 clearBtn.addEventListener('click', () => {
-  if (confirm("Clear entire chat history?")) {
+  if (confirm("Clear chat history?")) {
     chatHistory = [];
     localStorage.removeItem("chatHistory");
     restoreChat();
