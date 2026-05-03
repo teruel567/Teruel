@@ -182,4 +182,8 @@ header h2 {
 @keyframes blink {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
+}
+#sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
   }
