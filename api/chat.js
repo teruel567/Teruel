@@ -54,4 +54,4 @@ Rules:
     console.error("SERVER ERROR:", error); // 🔥 now you see real error
     return res.status(500).json({ error: error.message });
   }
-  }
+        }
