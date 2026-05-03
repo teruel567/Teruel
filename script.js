@@ -5,6 +5,12 @@ let isLoading = false;
 const chatContainer = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
+const clearBtn = document.getElementById("clearBtn");
+
+// ================= INIT =================
+window.onload = () => {
+  addMessage("bot", "👋 Welcome to Omega AI Assistant. How can I help you?");
+};
 
 // ================= ADD MESSAGE =================
 function addMessage(role, text) {
@@ -36,6 +42,7 @@ async function sendMessage() {
 
   isLoading = true;
   sendBtn.disabled = true;
+  userInput.disabled = true;
 
   addMessage("user", text);
   userInput.value = "";
@@ -48,13 +55,10 @@ async function sendMessage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        message: text
-      })
+      body: JSON.stringify({ message: text })
     });
 
     const data = await res.json();
-
     typing.remove();
 
     if (!data.reply) {
@@ -70,7 +74,18 @@ async function sendMessage() {
 
   isLoading = false;
   sendBtn.disabled = false;
+  userInput.disabled = false;
+  userInput.focus();
 }
+
+// ================= CLEAR CHAT =================
+clearBtn.addEventListener("click", () => {
+  const confirmClear = confirm("Clear all chat?");
+  if (confirmClear) {
+    chatContainer.innerHTML = "";
+    addMessage("bot", "🧹 Chat cleared. How can I help you?");
+  }
+});
 
 // ================= EVENTS =================
 sendBtn.addEventListener("click", sendMessage);
