@@ -1,42 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Customer Support Demo</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Omega AI Assistant</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-  <header>
-  <button id="menuBtn">☰</button>
+<div class="app">
 
-  <h2>Omega AI Assistant</h2>
-
-  <div>
-    <button id="downloadBtn">Export</button>
-    <button id="clearBtn">Clear</button>
-  </div>
-</header>
-
-  <!-- Quick Questions -->
-  <div class="quick-questions">
-    <button onclick="quickAsk('Do you offer refund?')">Refund</button>
-    <button onclick="quickAsk('How long is delivery?')">Delivery</button>
-    <button onclick="quickAsk('What products do you sell?')">Products</button>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <button onclick="createNewChat()">+ New Chat</button>
+    <div id="chatList"></div>
   </div>
 
-  <!-- Chat -->
-  <div id="chatContainer"></div>
+  <!-- MAIN -->
+  <div class="main">
 
-  <!-- Input -->
-  <div class="input-area">
-    <div class="input-row">
-      <input type="text" id="userInput" placeholder="Type a message...">
-      <button id="sendBtn">Send</button>
+    <!-- HEADER -->
+    <header>
+      <button id="menuBtn">☰</button>
+
+      <h2>Omega AI Assistant</h2>
+
+      <div>
+        <button id="downloadBtn">Export</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+    </header>
+
+    <!-- CHAT -->
+    <div id="chatContainer"></div>
+
+    <!-- INPUT -->
+    <div class="input-area">
+      <div class="input-row">
+        <input id="userInput" placeholder="Type a message..." />
+        <button id="sendBtn">Send</button>
+      </div>
     </div>
-  </div>
 
-  <script src="/script.js"></script>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay" class="overlay"></div>
+
+<script src="script.js"></script>
 </body>
-  </html>
+                              </html>
