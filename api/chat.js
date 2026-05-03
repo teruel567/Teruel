@@ -3,9 +3,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { message } = req.body;
-
   try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const message = body?.message;
+
+    if (!message) {
+      return res.status(400).json({ reply: "No message provided" });
+    }
+
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -15,25 +20,37 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "llama3-8b-8192",
         messages: [
-          {
-            role: "system",
-            content: "You are a helpful business assistant for a mobile store."
-          },
-          {
-            role: "user",
-            content: message
-          }
+          { role: "system", content: "You are a mobile store assistant." },
+          { role: "user", content: message }
         ]
       })
     });
 
-    const data = await response.json();
+    // 🔥 IMPORTANT DEBUG
+    const text = await response.text();
+    console.log("RAW RESPONSE:", text);
 
-    const reply = data.choices?.[0]?.message?.content || "No response";
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ reply: "Invalid JSON from API" });
+    }
 
-    res.status(200).json({ reply });
+    if (!response.ok) {
+      return res.status(500).json({
+        reply: data?.error?.message || "Groq API error"
+      });
+    }
+
+    const reply = data?.choices?.[0]?.message?.content;
+
+    return res.status(200).json({
+      reply: reply || "⚠️ No AI response"
+    });
 
   } catch (error) {
-    res.status(500).json({ reply: "Server error" });
+    console.error("SERVER ERROR:", error);
+    return res.status(500).json({ reply: "Server crashed" });
   }
 }
