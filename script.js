@@ -1,49 +1,46 @@
+// ================= STATE =================
+let isLoading = false;
+
+// ================= ELEMENTS =================
 const chatContainer = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
-const clearBtn = document.getElementById("clearBtn");
 
-let messages = [];
-
-// ADD MESSAGE
+// ================= ADD MESSAGE =================
 function addMessage(role, text) {
-  const div = document.createElement("div");
-  div.className = "message " + (role === "user" ? "user" : "assistant");
-  div.textContent = text;
+  const msg = document.createElement("div");
+  msg.className = role === "user" ? "msg user" : "msg bot";
+  msg.textContent = text;
 
-  chatContainer.appendChild(div);
+  chatContainer.appendChild(msg);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  return div;
+  return msg;
 }
 
-// TYPE EFFECT (🔥 NEW)
-function typeText(el, text) {
-  let i = 0;
-  el.textContent = "";
+// ================= TYPING INDICATOR =================
+function showTyping() {
+  const typing = document.createElement("div");
+  typing.className = "msg bot typing";
+  typing.innerHTML = `<span></span><span></span><span></span>`;
+  chatContainer.appendChild(typing);
 
-  function typing() {
-    if (i < text.length) {
-      el.textContent += text[i];
-      i++;
-      setTimeout(typing, 15);
-    }
-  }
-
-  typing();
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+  return typing;
 }
 
-// SEND MESSAGE
+// ================= SEND MESSAGE =================
 async function sendMessage() {
   const text = userInput.value.trim();
-  if (!text) return;
+  if (!text || isLoading) return;
+
+  isLoading = true;
+  sendBtn.disabled = true;
 
   addMessage("user", text);
-  messages.push({ role: "user", content: text });
-
   userInput.value = "";
 
-  const typing = addMessage("assistant", "Typing...");
+  const typing = showTyping();
 
   try {
     const res = await fetch("/api/chat", {
@@ -52,38 +49,32 @@ async function sendMessage() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        messages,
-        businessData: `
-Store Name: Omega Mobile Store
-We sell phones, accessories, and offer refunds within 14 days.
-`
+        message: text
       })
     });
 
     const data = await res.json();
-    const reply = data.reply || "No response";
 
-    // 🔥 smooth typing
-    typeText(typing, reply);
+    typing.remove();
 
-    messages.push({ role: "assistant", content: reply });
+    if (!data.reply) {
+      addMessage("bot", "⚠️ No response from server.");
+    } else {
+      addMessage("bot", data.reply);
+    }
 
   } catch (err) {
-    typing.textContent = "⚠️ Error connecting to server.";
+    typing.remove();
+    addMessage("bot", "⚠️ Error connecting to server.");
   }
+
+  isLoading = false;
+  sendBtn.disabled = false;
 }
 
-// EVENTS
-sendBtn.onclick = sendMessage;
+// ================= EVENTS =================
+sendBtn.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
 });
-
-clearBtn.onclick = () => {
-  chatContainer.innerHTML = "";
-  messages = [];
-};
-
-// WELCOME
-addMessage("assistant", "Welcome to Omega AI. How can I help you?");
