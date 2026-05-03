@@ -8,7 +8,8 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    const { messages } = req.body;
+    // ✅ NOW includes businessData
+    const { messages, businessData } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
       res.write(`data: ${JSON.stringify({ content: "Server error: Missing API key" })}\n\n`);
@@ -22,26 +23,26 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",   // Smarter model
+        model: "llama-3.1-8b-instant",
         messages: [
           {
             role: "system",
             content: `You are a professional AI customer support assistant for a business.
 
-Your role is to:
-- Help customers with questions about products or services
-- Provide clear, helpful, and polite responses
-- Guide users toward making decisions (like purchases or inquiries)
-- Stay professional, friendly, and concise
+Use the business information below to answer user questions accurately.
 
-If business information is provided, use it to answer accurately.
-If you don't know something, politely say so and suggest contacting support.
+Business Information:
+${businessData || "No business data provided."}
 
-Always act like a smart assistant representing a real company.`
+Instructions:
+- Always base your answers on the business info if available
+- Be clear, professional, and helpful
+- Help users with services, pricing, and support questions
+- If information is missing, say so politely`
           },
           ...messages
         ],
-        temperature: 0.75,
+        temperature: 0.7,
         max_tokens: 1000,
         stream: true
       })
@@ -83,4 +84,4 @@ Always act like a smart assistant representing a real company.`
     res.write(`data: ${JSON.stringify({ content: "⚠️ Something went wrong during streaming." })}\n\n`);
     res.end();
   }
-}
+      }
