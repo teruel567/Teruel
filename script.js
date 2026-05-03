@@ -20,7 +20,7 @@ function addMessage(role) {
 
 function addWelcome() {
   const p = addMessage("assistant");
-  p.textContent = "Hello! I’m your AI assistant. How can I help you today?";
+  p.textContent = "Hello! I’m your AI customer assistant. How can I help you today?";
 }
 
 function restoreChat() {
