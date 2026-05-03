@@ -6,61 +6,40 @@ export default async function handler(req, res) {
   try {
     const { messages } = req.body;
 
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ content: "Invalid messages format" });
-    }
-
     if (!process.env.GROQ_API_KEY) {
-      console.error("GROQ_API_KEY is missing in environment variables");
-      return res.status(500).json({ 
-        content: "⚠️ Server configuration error: Missing API key" 
-      });
+      return res.status(500).json({ content: "Server configuration error: Missing API key" });
     }
 
-    // Clean and prepare messages for Groq
-    const cleanedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content || msg.display || ""
-    }));
-
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",        // You can change to "llama-3.1-8b-instant" if available
+        model: "llama3-8b-8192",
         messages: [
-          {
-            role: "system",
-            content: "You are Teruel Omega AI, a friendly, helpful, and intelligent assistant."
-          },
-          ...cleanedMessages
+          { role: "system", content: "You are Teruel Omega AI, a friendly and helpful assistant." },
+          ...messages
         ],
-        temperature: 0.75,
-        max_tokens: 800,
-        stream: false
+        temperature: 0.7,
+        max_tokens: 800
       })
     });
 
-    const data = await response.json();
+    const data = await groqResponse.json();
 
-    if (!response.ok) {
-      console.error("Groq API Error:", data);
-      return res.status(500).json({
-        content: `⚠️ Groq Error: ${data.error?.message || "Failed to get response"}`
+    if (!groqResponse.ok) {
+      return res.status(500).json({ 
+        content: `Groq Error: ${data.error?.message || "Failed to connect"}` 
       });
     }
 
-    const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
-
+    const reply = data.choices?.[0]?.message?.content || "No response received.";
     return res.status(200).json({ content: reply });
 
   } catch (error) {
-    console.error("Server Error:", error);
-    return res.status(500).json({
-      content: "⚠️ Something went wrong on the server. Please try again."
-    });
+    console.error("API Error:", error);
+    return res.status(500).json({ content: "Internal server error. Please try again." });
   }
-      }
+}
