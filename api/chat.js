@@ -22,22 +22,26 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.1-8b-instant",   // Smarter model
         messages: [
           {
             role: "system",
-            content: "You are Teruel Omega AI, a friendly, helpful, and intelligent assistant."
+            content: `You are Teruel Omega AI, an exceptionally intelligent, friendly, and witty AI assistant. 
+You are helpful, concise when needed, but warm and engaging. 
+You love to explain things clearly and can be humorous when appropriate. 
+You remember the conversation context very well.
+Always be honest - if you don't know something, say so.`
           },
           ...messages
         ],
-        temperature: 0.7,
-        max_tokens: 800,
+        temperature: 0.75,
+        max_tokens: 1000,
         stream: true
       })
     });
 
     if (!groqResponse.ok) {
-      const error = await groqResponse.json();
+      const error = await groqResponse.json().catch(() => ({}));
       res.write(`data: ${JSON.stringify({ content: "Error: " + (error.error?.message || "Failed to connect") })}\n\n`);
       return res.end();
     }
@@ -69,7 +73,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error(error);
-    res.write(`data: ${JSON.stringify({ content: "⚠️ Streaming error occurred." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ content: "⚠️ Something went wrong during streaming." })}\n\n`);
     res.end();
   }
 }
