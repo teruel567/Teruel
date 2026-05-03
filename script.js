@@ -10,6 +10,7 @@ const clearBtn = document.getElementById("clearBtn");
 // ================= INIT =================
 window.onload = () => {
   addMessage("bot", "👋 Welcome to Omega AI Assistant. How can I help you?");
+  userInput.focus(); // better UX
 };
 
 // ================= ADD MESSAGE =================
@@ -19,19 +20,28 @@ function addMessage(role, text) {
   msg.textContent = text;
 
   chatContainer.appendChild(msg);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  // smooth scroll
+  chatContainer.scrollTo({
+    top: chatContainer.scrollHeight,
+    behavior: "smooth"
+  });
 
   return msg;
 }
 
-// ================= TYPING INDICATOR =================
+// ================= TYPING =================
 function showTyping() {
   const typing = document.createElement("div");
   typing.className = "msg bot typing";
   typing.innerHTML = `<span></span><span></span><span></span>`;
   chatContainer.appendChild(typing);
 
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  chatContainer.scrollTo({
+    top: chatContainer.scrollHeight,
+    behavior: "smooth"
+  });
+
   return typing;
 }
 
@@ -43,6 +53,7 @@ async function sendMessage() {
   isLoading = true;
   sendBtn.disabled = true;
   userInput.disabled = true;
+  clearBtn.disabled = true;
 
   addMessage("user", text);
   userInput.value = "";
@@ -61,25 +72,28 @@ async function sendMessage() {
     const data = await res.json();
     typing.remove();
 
-    if (!data.reply) {
-      addMessage("bot", "⚠️ No response from server.");
+    if (!res.ok) {
+      addMessage("bot", `⚠️ ${data.error || "Server error"}`);
     } else {
-      addMessage("bot", data.reply);
+      addMessage("bot", data.reply || "⚠️ No response.");
     }
 
   } catch (err) {
     typing.remove();
-    addMessage("bot", "⚠️ Error connecting to server.");
+    addMessage("bot", "⚠️ Network error. Check your connection.");
   }
 
   isLoading = false;
   sendBtn.disabled = false;
   userInput.disabled = false;
+  clearBtn.disabled = false;
   userInput.focus();
 }
 
 // ================= CLEAR CHAT =================
 clearBtn.addEventListener("click", () => {
+  if (isLoading) return;
+
   const confirmClear = confirm("Clear all chat?");
   if (confirmClear) {
     chatContainer.innerHTML = "";
@@ -90,6 +104,6 @@ clearBtn.addEventListener("click", () => {
 // ================= EVENTS =================
 sendBtn.addEventListener("click", sendMessage);
 
-userInput.addEventListener("keypress", (e) => {
+userInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
 });
