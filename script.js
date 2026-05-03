@@ -1,11 +1,23 @@
+// ================= BUSINESS DATA =================
+const BUSINESS_INFO = `
+Business Name: Omega Mobile Store
+
+We sell smartphones and accessories.
+We offer a 7-day refund policy.
+We provide free nationwide delivery.
+Customer support is available 24/7.
+`;
+
+// ================= STATE =================
 let chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
 
+// ================= ELEMENTS =================
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
-const businessDataInput = document.getElementById('businessData'); // ✅ NEW
 
+// ================= FUNCTIONS =================
 function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
@@ -20,34 +32,51 @@ function addMessage(role) {
 
 function addWelcome() {
   const p = addMessage("assistant");
-  p.textContent = "Hello! I’m your AI customer assistant. How can I help you today?";
+  p.textContent = "👋 Welcome to Omega Mobile Store! Ask about products, delivery, refunds, or support.";
 }
 
 function restoreChat() {
   chatContainer.innerHTML = '';
+
   if (chatHistory.length === 0) {
     addWelcome();
     return;
   }
+
   chatHistory.forEach(msg => {
     const p = addMessage(msg.role);
     p.textContent = msg.content;
   });
+
   scrollToBottom();
 }
 
+// ================= QUICK ASK =================
+function quickAsk(text) {
+  userInput.value = text;
+  sendMessage();
+}
+
+// ================= SEND MESSAGE =================
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
 
+  // User message
   addMessage('user').textContent = text;
   chatHistory.push({ role: "user", content: text });
   userInput.value = '';
+  userInput.focus();
 
-  const assistantText = addMessage('assistant');
+  // Typing indicator
+  const typingBubble = document.createElement('div');
+  typingBubble.className = 'message assistant';
+  typingBubble.innerHTML = '<p>Typing...</p>';
+  chatContainer.appendChild(typingBubble);
   scrollToBottom();
 
   let fullResponse = '';
+  let assistantText = null;
 
   try {
     const response = await fetch('/api/chat', {
@@ -55,7 +84,7 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: chatHistory,
-        businessData: businessDataInput.value // ✅ FIXED
+        businessData: BUSINESS_INFO
       })
     });
 
@@ -73,25 +102,45 @@ async function sendMessage() {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
+
             if (data.content) {
+
+              // Remove typing only when first content arrives
+              if (!assistantText) {
+                typingBubble.remove();
+                assistantText = addMessage('assistant');
+              }
+
               fullResponse += data.content;
               assistantText.textContent = fullResponse;
               scrollToBottom();
             }
+
           } catch (e) {}
         }
       }
     }
+if (!fullResponse) {
+  if (!assistantText) {
+    typingBubble.remove();
+    assistantText = addMessage('assistant');
+  }
 
-    chatHistory.push({ role: "assistant", content: fullResponse });
-    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+  fullResponse = "⚠️ No response received. Please try again.";
+  assistantText.textContent = fullResponse;
+}
+
+chatHistory.push({ role: "assistant", content: fullResponse });
+localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
 
   } catch (err) {
     console.error(err);
-    assistantText.textContent = "⚠️ Error occurred while getting response.";
+    typingBubble.remove();
+    addMessage('assistant').textContent = "⚠️ Something went wrong. Please try again.";
   }
 }
 
+// ================= EVENTS =================
 sendBtn.addEventListener('click', sendMessage);
 
 userInput.addEventListener('keypress', (e) => {
@@ -99,11 +148,12 @@ userInput.addEventListener('keypress', (e) => {
 });
 
 clearBtn.addEventListener('click', () => {
-  if (confirm("Clear chat history?")) {
+  if (confirm("Clear chat?")) {
     chatHistory = [];
     localStorage.removeItem("chatHistory");
     restoreChat();
   }
 });
 
+// ================= INIT =================
 restoreChat();
