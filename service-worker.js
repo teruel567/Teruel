@@ -1,6 +1,9 @@
-const CACHE_NAME = "ai-assistance-v6";
-// Install - Cache essential files
+const CACHE_NAME = "omega-ai-v1";
+
+// Install
 self.addEventListener("install", (event) => {
+  self.skipWaiting(); // 🔥 force update
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll([
@@ -15,52 +18,48 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate - Clean up old caches
+// Activate
 self.addEventListener("activate", (event) => {
+  self.clients.claim(); // 🔥 take control immediately
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
+    caches.keys().then((names) =>
+      Promise.all(
+        names.map((name) => {
+          if (name !== CACHE_NAME) {
+            return caches.delete(name);
           }
         })
-      );
-    })
+      )
+    )
   );
 });
 
-// Fetch - Network first for API, Cache first for static files
+// Fetch
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Skip API calls - always go to network (important!)
+  // Always bypass cache for API
   if (url.pathname.startsWith("/api/")) {
     return event.respondWith(fetch(event.request));
   }
 
-  // For everything else: Cache-first strategy
+  // Cache-first
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Return cached version if available
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+    caches.match(event.request).then((cached) => {
+      return (
+        cached ||
+        fetch(event.request).then((res) => {
+          if (!res || res.status !== 200) return res;
 
-      // Otherwise fetch from network and cache it
-      return fetch(event.request).then((response) => {
-        // Don't cache if response is not ok
-        if (!response || response.status !== 200) {
-          return response;
-        }
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
 
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
-        return response;
-      });
+          return res;
+        })
+      );
     })
   );
 });
