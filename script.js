@@ -1,87 +1,79 @@
-document.addEventListener("DOMContentLoaded", () => {
+// ===================== ELEMENTS =====================
+const chatContainer = document.getElementById("chatContainer");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
 
-  const chatContainer = document.getElementById("chatContainer");
-  const userInput = document.getElementById("userInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const clearBtn = document.getElementById("clearBtn");
+// ===================== STATE =====================
+let messages = [];
 
-  let messages = [];
+// ===================== ADD MESSAGE =====================
+function addMessage(role, text) {
+  const div = document.createElement("div");
+  div.className = "message " + (role === "user" ? "user" : "assistant");
+  div.textContent = text;
 
-  const BUSINESS_INFO = {
-    name: "Omega Mobile Store",
-    products: ["smartphones", "accessories"],
-    policies: {
-      refund: "7-day refund policy"
-    }
-  };
+  chatContainer.appendChild(div);
+  scrollToBottom();
 
-  // ================= ADD MESSAGE =================
-  function addMessage(role, text) {
-    const div = document.createElement("div");
-    div.className = `message ${role}`;
-    div.textContent = text;
+  return div;
+}
 
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+// ===================== SCROLL =====================
+function scrollToBottom() {
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
-    messages.push({ role, content: text });
+// ===================== SEND =====================
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
 
-    return div;
+  // show user message
+  addMessage("user", text);
+
+  // save to messages
+  messages.push({ role: "user", content: text });
+
+  userInput.value = "";
+
+  // typing
+  const typing = addMessage("assistant", "Typing...");
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        messages: messages,
+        businessData: `
+Store Name: Omega Mobile Store
+We sell phones, accessories, and offer refunds within 14 days.
+`
+      })
+    });
+
+    const data = await res.json();
+
+    const reply = data.reply || "No response";
+
+    typing.textContent = reply;
+
+    // save bot reply
+    messages.push({ role: "assistant", content: reply });
+
+  } catch (err) {
+    console.error(err);
+    typing.textContent = "⚠️ Error connecting to server.";
   }
 
-  // ================= SEND =================
-  async function sendMessage() {
-    const text = userInput.value.trim();
-    if (!text) return;
+  scrollToBottom();
+}
 
-    addMessage("user", text);
-    userInput.value = "";
+// ===================== EVENTS =====================
+sendBtn.addEventListener("click", sendMessage);
 
-    const typing = addMessage("assistant", "Typing...");
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messages,
-          businessData: BUSINESS_INFO
-        })
-      });
-
-      const data = await res.json();
-
-      typing.textContent = data.reply || "No response";
-
-      messages.push({
-        role: "assistant",
-        content: data.reply
-      });
-
-    } catch (err) {
-      typing.textContent = "⚠️ Error connecting to server";
-      console.error(err);
-    }
-  }
-
-  // ================= CLEAR =================
-  function clearChat() {
-    messages = [];
-    chatContainer.innerHTML = "";
-  }
-
-  // ================= EVENTS =================
-  sendBtn.onclick = sendMessage;
-
-  userInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendMessage();
-  });
-
-  clearBtn.onclick = clearChat;
-
-  // ================= START =================
-  addMessage("assistant", "👋 Welcome! Ask about products, delivery, or refunds.");
-
+userInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
 });
