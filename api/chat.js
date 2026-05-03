@@ -8,13 +8,26 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    // ✅ NOW includes businessData
     const { messages, businessData } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
       res.write(`data: ${JSON.stringify({ content: "Server error: Missing API key" })}\n\n`);
       return res.end();
     }
+
+    // ✅ FIXED system prompt
+    const systemPrompt = `
+You are Omega Mobile Store AI assistant.
+
+Store Info:
+${businessData}
+
+Rules:
+- Only answer questions about the store (products, delivery, refunds, support)
+- If question is unrelated, politely redirect user back to store topics
+- Keep answers short and helpful
+- Sound like a real human customer support agent
+`;
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -25,25 +38,11 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
         messages: [
-          {
-            role: "system",
-            content: `You are a professional AI customer support assistant for a business.
-
-Use the business information below to answer user questions accurately.
-
-Business Information:
-${businessData || "No business data provided."}
-
-Instructions:
-- Always base your answers on the business info if available
-- Be clear, professional, and helpful
-- Help users with services, pricing, and support questions
-- If information is missing, say so politely`
-          },
+          { role: "system", content: systemPrompt },
           ...messages
         ],
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 800,
         stream: true
       })
     });
@@ -81,7 +80,7 @@ Instructions:
 
   } catch (error) {
     console.error(error);
-    res.write(`data: ${JSON.stringify({ content: "⚠️ Something went wrong during streaming." })}\n\n`);
+    res.write(`data: ${JSON.stringify({ content: "⚠️ Something went wrong." })}\n\n`);
     res.end();
   }
-                                         }
+                                   }
