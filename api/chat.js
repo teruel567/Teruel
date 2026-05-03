@@ -3,13 +3,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
   try {
     const { messages } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
-      return res.status(500).json({ 
-        content: "Server error: Missing Groq API Key" 
-      });
+      res.write(`data: ${JSON.stringify({ content: "Server error: Missing API key" })}\n\n`);
+      return res.end();
     }
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -19,7 +22,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",     // ← Updated to working model
+        model: "llama-3.1-8b-instant",
         messages: [
           {
             role: "system",
@@ -28,26 +31,45 @@ export default async function handler(req, res) {
           ...messages
         ],
         temperature: 0.7,
-        max_tokens: 800
+        max_tokens: 800,
+        stream: true
       })
     });
 
-    const data = await groqResponse.json();
-
     if (!groqResponse.ok) {
-      console.error("Groq Error:", data);
-      return res.status(500).json({ 
-        content: data.error?.message || "Failed to get response from Groq" 
-      });
+      const error = await groqResponse.json();
+      res.write(`data: ${JSON.stringify({ content: "Error: " + (error.error?.message || "Failed to connect") })}\n\n`);
+      return res.end();
     }
 
-    const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
-    return res.status(200).json({ content: reply });
+    const reader = groqResponse.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(line.slice(6));
+            const content = data.choices?.[0]?.delta?.content || '';
+            if (content) {
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    res.end();
 
   } catch (error) {
-    console.error("Server Error:", error);
-    return res.status(500).json({ 
-      content: "⚠️ Internal server error. Please try again." 
-    });
+    console.error(error);
+    res.write(`data: ${JSON.stringify({ content: "⚠️ Streaming error occurred." })}\n\n`);
+    res.end();
   }
 }
