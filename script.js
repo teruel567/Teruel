@@ -20,6 +20,8 @@ const chatContainer = document.getElementById('chatContainer');
 const clearBtn = document.getElementById('clearBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const chatList = document.getElementById('chatList');
+const menuBtn = document.getElementById('menuBtn');
+const sidebar = document.querySelector('.sidebar');
 
 // ================= STORAGE =================
 function saveChats() {
@@ -30,7 +32,12 @@ function saveChats() {
 // ================= CHAT SYSTEM =================
 function createNewChat() {
   const id = Date.now().toString();
-  chats[id] = [];
+
+  chats[id] = {
+    title: "New Chat",
+    messages: []
+  };
+
   currentChatId = id;
   saveChats();
   renderChatList();
@@ -42,6 +49,10 @@ function switchChat(id) {
   saveChats();
   renderChatList();
   renderChat();
+
+  if (window.innerWidth < 768) {
+    sidebar.classList.remove("open");
+  }
 }
 
 function deleteChat(id) {
@@ -52,21 +63,32 @@ function deleteChat(id) {
   renderChat();
 }
 
+function renameChat(id) {
+  const newName = prompt("Rename chat:");
+  if (!newName) return;
+
+  chats[id].title = newName;
+  saveChats();
+  renderChatList();
+}
+
 // ================= UI =================
 function renderChatList() {
-  if (!chatList) return;
   chatList.innerHTML = "";
 
   Object.keys(chats).forEach(id => {
     const item = document.createElement("div");
     item.className = "chat-item" + (id === currentChatId ? " active" : "");
-    item.textContent = "Chat " + id.slice(-4);
+    item.textContent = chats[id].title || "Chat";
 
     item.onclick = () => switchChat(id);
 
     item.oncontextmenu = (e) => {
       e.preventDefault();
-      if (confirm("Delete this chat?")) deleteChat(id);
+      const action = prompt("Type 'delete' or 'rename'");
+
+      if (action === "delete") deleteChat(id);
+      if (action === "rename") renameChat(id);
     };
 
     chatList.appendChild(item);
@@ -75,7 +97,7 @@ function renderChatList() {
 
 function renderChat() {
   chatContainer.innerHTML = "";
-  const chat = chats[currentChatId] || [];
+  const chat = chats[currentChatId]?.messages || [];
 
   if (chat.length === 0) {
     addMessage("assistant").textContent =
@@ -111,7 +133,12 @@ async function sendMessage() {
   sendBtn.disabled = true;
 
   addMessage("user").textContent = text;
-  chats[currentChatId].push({ role: "user", content: text });
+  chats[currentChatId].messages.push({ role: "user", content: text });
+
+  // Auto title from first message
+  if (chats[currentChatId].messages.length === 1) {
+    chats[currentChatId].title = text.slice(0, 20);
+  }
 
   userInput.value = "";
 
@@ -131,7 +158,7 @@ async function sendMessage() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        messages: chats[currentChatId],
+        messages: chats[currentChatId].messages,
         businessData: BUSINESS_INFO
       })
     });
@@ -166,24 +193,16 @@ async function sendMessage() {
       }
     }
 
-    if (!fullResponse) {
-      typing.remove();
-      assistantText = addMessage("assistant");
-      fullResponse = "⚠️ No response. Try again.";
-      assistantText.textContent = fullResponse;
-    }
-
-    chats[currentChatId].push({
+    chats[currentChatId].messages.push({
       role: "assistant",
       content: fullResponse
     });
 
     saveChats();
 
-  } catch (err) {
+  } catch {
     typing.remove();
-    addMessage("assistant").textContent =
-      "⚠️ Network issue. Please try again.";
+    addMessage("assistant").textContent = "⚠️ Network error.";
   }
 
   isLoading = false;
@@ -198,19 +217,17 @@ userInput.addEventListener("keypress", (e) => {
 });
 
 clearBtn.onclick = () => {
-  if (confirm("Clear this chat?")) {
-    chats[currentChatId] = [];
-    saveChats();
-    renderChat();
-  }
+  chats[currentChatId].messages = [];
+  saveChats();
+  renderChat();
 };
 
 downloadBtn.onclick = () => {
-  const chat = chats[currentChatId] || [];
+  const chat = chats[currentChatId]?.messages || [];
   let text = "";
 
   chat.forEach(m => {
-    text += `${m.role.toUpperCase()}: ${m.content}\n\n`;
+    text += `${m.role}: ${m.content}\n\n`;
   });
 
   const blob = new Blob([text], { type: "text/plain" });
@@ -219,6 +236,13 @@ downloadBtn.onclick = () => {
   a.download = "chat.txt";
   a.click();
 };
+
+// Mobile toggle
+if (menuBtn) {
+  menuBtn.onclick = () => {
+    sidebar.classList.toggle("open");
+  };
+}
 
 // ================= INIT =================
 if (!currentChatId) createNewChat();
