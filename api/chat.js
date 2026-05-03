@@ -25,8 +25,8 @@ Rules:
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
@@ -37,13 +37,21 @@ Rules:
       })
     });
 
+    // 🔥 IMPORTANT: check if API failed
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Groq API error:", text);
+      return res.status(500).json({ error: "Groq API failed" });
+    }
+
     const data = await response.json();
 
     return res.status(200).json({
-      reply: data.choices?.[0]?.message?.content || "No response"
+      reply: data?.choices?.[0]?.message?.content || "No response"
     });
 
   } catch (error) {
-    return res.status(500).json({ error: "Server error" });
+    console.error("SERVER ERROR:", error); // 🔥 now you see real error
+    return res.status(500).json({ error: error.message });
   }
-      }
+  }
