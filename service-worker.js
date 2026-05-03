@@ -1,4 +1,5 @@
-const CACHE_NAME = "ai-assistance-v4";
+2
+const CACHE_NAME = "ai-assistance-v5";
 
 // Install - Cache essential files
 self.addEventListener("install", (event) => {
