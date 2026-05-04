@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Use POST request" });
   }
 
   try {
@@ -20,26 +20,26 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "llama3-8b-8192",
         messages: [
-          {
-            role: "system",
-            content: "You are Omega AI, a smart assistant."
-          },
-          {
-            role: "user",
-            content: message
-          }
+          { role: "system", content: "You are Omega AI, a helpful assistant." },
+          { role: "user", content: message }
         ]
       })
     });
 
     const data = await response.json();
 
-    const reply = data?.choices?.[0]?.message?.content || "No response";
+    if (!response.ok) {
+      return res.status(500).json({
+        error: data.error?.message || "Groq API error"
+      });
+    }
 
-    return res.status(200).json({ reply });
+    return res.status(200).json({
+      reply: data.choices?.[0]?.message?.content || "No response"
+    });
 
   } catch (error) {
-    console.error("ERROR:", error);
+    console.error(error);
     return res.status(500).json({ error: "Server error" });
   }
-}
+        }
