@@ -1,43 +1,94 @@
+// ================= SUPABASE SETUP =================
+const supabaseUrl = "https://twnphrrfcbzbuovcxujg.supabase.co"; // <-- replace if needed
+const supabaseKey = "sb_publishable_K4oguvLu8U5cti-YP32yHw_DkF6LqEB"; // <-- paste your key
+
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= STATE =================
 let isLoading = false;
 
+// ================= ELEMENTS =================
 const chatContainer = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
+const authModal = document.getElementById("authModal");
 
-window.onload = () => {
-  addMessage("bot", "👋 Welcome to Omega AI. How can I help?");
+// ================= INIT =================
+window.onload = async () => {
+  const { data } = await supabase.auth.getSession();
+
+  if (!data.session) {
+    authModal.style.display = "flex";
+  } else {
+    authModal.style.display = "none";
+  }
+
+  addMessage("bot", "👋 Welcome to Omega AI Assistant.");
 };
 
-// ADD MESSAGE
-function addMessage(role, text) {
-  const msg = document.createElement("div");
-  msg.className = `msg ${role}`;
-  msg.textContent = text;
-  chatContainer.appendChild(msg);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-  return msg;
-}
+// ================= AUTH =================
+async function handleSignUp() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-// STREAM TEXT
-async function typeText(element, text) {
-  element.textContent = "";
-  for (let i = 0; i < text.length; i++) {
-    element.textContent += text[i];
-    await new Promise(r => setTimeout(r, 15));
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
+  }
+
+  const { error } = await supabase.auth.signUp({ email, password });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Signup successful! You can now log in.");
   }
 }
 
-// TYPING DOTS
-function showTyping() {
-  const typing = document.createElement("div");
-  typing.className = "msg bot typing";
-  typing.innerHTML = `<span></span><span></span><span></span>`;
-  chatContainer.appendChild(typing);
-  return typing;
+async function handleSignIn() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    authModal.style.display = "none";
+  }
 }
 
-// SEND
+// 🔄 Listen for auth changes
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    authModal.style.display = "none";
+  } else {
+    authModal.style.display = "flex";
+  }
+});
+
+// ================= ADD MESSAGE =================
+function addMessage(role, text) {
+  const msg = document.createElement("div");
+  msg.className = role === "user" ? "msg user" : "msg bot";
+  msg.textContent = text;
+
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  return msg;
+}
+
+// ================= SEND MESSAGE =================
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text || isLoading) return;
@@ -48,7 +99,7 @@ async function sendMessage() {
   addMessage("user", text);
   userInput.value = "";
 
-  const typing = showTyping();
+  const botMsg = addMessage("bot", "Typing...");
 
   try {
     const res = await fetch("/api/chat", {
@@ -60,28 +111,34 @@ async function sendMessage() {
     });
 
     const data = await res.json();
-    typing.remove();
 
-    const botMsg = addMessage("bot", "");
-    await typeText(botMsg, data.reply || "No response");
+    if (!data.reply) {
+      botMsg.textContent = "⚠️ No response from AI.";
+    } else {
+      botMsg.textContent = data.reply;
+    }
 
-  } catch {
-    typing.remove();
-    addMessage("bot", "⚠️ Error connecting to server.");
+  } catch (err) {
+    botMsg.textContent = "⚠️ Error connecting to server.";
   }
 
   isLoading = false;
   sendBtn.disabled = false;
 }
 
-// CLEAR
-clearBtn.onclick = () => {
-  chatContainer.innerHTML = "";
-  addMessage("bot", "🧹 Chat cleared.");
-};
+// ================= CLEAR CHAT =================
+clearBtn.addEventListener("click", () => {
+  if (isLoading) return;
 
-// EVENTS
-sendBtn.onclick = sendMessage;
+  const confirmClear = confirm("Clear all chat?");
+  if (confirmClear) {
+    chatContainer.innerHTML = "";
+    addMessage("bot", "🧹 Chat cleared.");
+  }
+});
+
+// ================= EVENTS =================
+sendBtn.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
