@@ -1,14 +1,14 @@
 export default async function handler(req, res) {
+  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const message = body?.message;
+    const { message } = req.body;
 
     if (!message) {
-      return res.status(400).json({ reply: "No message provided" });
+      return res.status(400).json({ error: "Message is required" });
     }
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -18,39 +18,28 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "llama3-8b-8192",
         messages: [
-          { role: "system", content: "You are a mobile store assistant." },
-          { role: "user", content: message }
+          {
+            role: "system",
+            content: "You are Omega AI, a smart assistant."
+          },
+          {
+            role: "user",
+            content: message
+          }
         ]
       })
     });
 
-    // 🔥 IMPORTANT DEBUG
-    const text = await response.text();
-    console.log("RAW RESPONSE:", text);
+    const data = await response.json();
 
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return res.status(500).json({ reply: "Invalid JSON from API" });
-    }
+    const reply = data?.choices?.[0]?.message?.content || "No response";
 
-    if (!response.ok) {
-      return res.status(500).json({
-        reply: data?.error?.message || "Groq API error"
-      });
-    }
-
-    const reply = data?.choices?.[0]?.message?.content;
-
-    return res.status(200).json({
-      reply: reply || "⚠️ No AI response"
-    });
+    return res.status(200).json({ reply });
 
   } catch (error) {
-    console.error("SERVER ERROR:", error);
-    return res.status(500).json({ reply: "Server crashed" });
+    console.error("ERROR:", error);
+    return res.status(500).json({ error: "Server error" });
   }
 }
