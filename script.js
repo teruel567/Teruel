@@ -15,6 +15,7 @@ const clearBtn = document.getElementById("clearBtn");
 const authModal = document.getElementById("authModal");
 
 // ================= INIT =================
+  userInput.focus();
 window.onload = async () => {
   const { data } = await supabase.auth.getSession();
 
@@ -90,13 +91,14 @@ function addMessage(role, text) {
 
 // ================= SEND MESSAGE =================
 async function sendMessage() {
-  const text = userInput.value.trim();
-  if (!text || isLoading) return;
+  const message = userInput.value.trim();
+
+  if (!message || isLoading) return;
 
   isLoading = true;
   sendBtn.disabled = true;
 
-  addMessage("user", text);
+  addMessage("user", message);
   userInput.value = "";
 
   const botMsg = addMessage("bot", "Typing...");
@@ -107,19 +109,20 @@ async function sendMessage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({ message })
     });
+
+    if (!res.ok) {
+      throw new Error("Server error");
+    }
 
     const data = await res.json();
 
-    if (!data.reply) {
-      botMsg.textContent = "⚠️ No response from AI.";
-    } else {
-      botMsg.textContent = data.reply;
-    }
+    botMsg.textContent = data.reply || "⚠️ No response from AI";
 
-  } catch (err) {
-    botMsg.textContent = "⚠️ Error connecting to server.";
+  } catch (error) {
+    console.error(error);
+    botMsg.textContent = "⚠️ Error connecting to AI";
   }
 
   isLoading = false;
