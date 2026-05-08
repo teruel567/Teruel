@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
   <title>Omega AI Assistant</title>
 
   <link rel="stylesheet" href="/style.css">
@@ -11,23 +12,40 @@
 
 <body>
 
-  <!-- LOGIN MODAL -->
+  <!-- AUTH MODAL -->
   <div id="authModal" class="auth-modal">
     <div class="auth-box">
       <h2>Welcome</h2>
 
-      <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
+      <input
+        type="email"
+        id="email"
+        placeholder="Email"
+      />
 
-      <button onclick="handleSignIn()">Login</button>
-      <button onclick="handleSignUp()">Sign Up</button>
+      <input
+        type="password"
+        id="password"
+        placeholder="Password"
+      />
+
+      <button id="loginBtn">
+        Login
+      </button>
+
+      <button id="signupBtn">
+        Sign Up
+      </button>
     </div>
   </div>
 
   <!-- HEADER -->
   <header class="header">
     <h2>Omega AI Assistant</h2>
-    <button id="clearBtn">Clear</button>
+
+    <button id="clearBtn">
+      Clear
+    </button>
   </header>
 
   <!-- CHAT -->
@@ -35,15 +53,24 @@
 
   <!-- INPUT -->
   <div class="input-area">
-    <input id="userInput" type="text" placeholder="Type a message..." />
-    <button id="sendBtn">Send</button>
+
+    <input
+      id="userInput"
+      type="text"
+      placeholder="Type a message..."
+    />
+
+    <button id="sendBtn">
+      Send
+    </button>
+
   </div>
 
   <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- MAIN SCRIPT -->
-  <script src="script.js"></script>
+  <script src="/script.js"></script>
 
 </body>
 </html>
