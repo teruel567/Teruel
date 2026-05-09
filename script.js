@@ -1,6 +1,6 @@
 // ====================== SUPABASE ======================
 
-const SUPABASE_URL = "https://twnphrrfcbzbuovcxujg.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://twnphrrfcbzbuovcxujg.supabase.co";
 
 const SUPABASE_ANON_KEY = "sb_publishable_K4oguvLu8U5cti-YP32yHw_DkF6LqEB";
 
