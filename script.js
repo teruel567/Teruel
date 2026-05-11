@@ -1,7 +1,6 @@
 // ====================== SUPABASE ======================
 
 const SUPABASE_URL = "https://twnphrrfcbzbuovcxujg.supabase.co";
-
 const SUPABASE_ANON_KEY = "sb_publishable_K4oguvLu8U5cti-YP32yHw_DkF6LqEB";
 
 const supabaseClient = supabase.createClient(
@@ -11,46 +10,133 @@ const supabaseClient = supabase.createClient(
 
 // ====================== ELEMENTS ======================
 
-const chatBox = document.getElementById("chatContainer");
+const sidebar = document.getElementById("sidebar");
+const menuBtn = document.getElementById("menuBtn");
+const newChatBtn = document.getElementById("newChatBtn");
+const chatList = document.getElementById("chatList");
+const chatTitle = document.getElementById("chatTitle");
 
+const chatContainer = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
-
 const sendBtn = document.getElementById("sendBtn");
-
-const loginBtn = document.getElementById("loginBtn");
-
-const signupBtn = document.getElementById("signupBtn");
-
-const emailInput = document.getElementById("email");
-
-const passwordInput = document.getElementById("password");
-
 const clearBtn = document.getElementById("clearBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+
 const authModal = document.getElementById("authModal");
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
 
-// ====================== CHAT STORAGE ======================
+// ====================== STATE ======================
 
-let messages =
-  JSON.parse(localStorage.getItem("omega_chats")) || [];
+let chats =
+  JSON.parse(localStorage.getItem("omega_multi_chats")) || {};
 
-// ====================== SAVE CHATS ======================
+let currentChatId =
+  localStorage.getItem("omega_current_chat_id") || null;
+
+// ====================== HELPERS ======================
+
+function generateChatId() {
+  return "chat_" + Date.now();
+}
+
+function getChatTitle(messages) {
+  const firstUserMessage = messages.find(
+    (msg) => msg.role === "user"
+  );
+
+  if (!firstUserMessage) {
+    return "New Chat";
+  }
+
+  return firstUserMessage.content.slice(0, 30);
+}
 
 function saveChats() {
   localStorage.setItem(
-    "omega_chats",
-    JSON.stringify(messages)
+    "omega_multi_chats",
+    JSON.stringify(chats)
+  );
+
+  localStorage.setItem(
+    "omega_current_chat_id",
+    currentChatId
   );
 }
 
-// ====================== RENDER CHATS ======================
+function createNewChat() {
+  const chatId = generateChatId();
 
-function renderChats() {
+  chats[chatId] = {
+    id: chatId,
+    title: "New Chat",
+    messages: [],
+    createdAt: Date.now(),
+  };
 
-  chatBox.innerHTML = "";
+  currentChatId = chatId;
 
-  messages.forEach((msg) => {
+  saveChats();
+  renderChatList();
+  renderCurrentChat();
 
+  userInput.focus();
+}
+
+function getCurrentChat() {
+  if (!currentChatId || !chats[currentChatId]) {
+    createNewChat();
+  }
+
+  return chats[currentChatId];
+}
+
+// ====================== RENDER CHAT LIST ======================
+
+function renderChatList() {
+  chatList.innerHTML = "";
+
+  const sortedChats = Object.values(chats).sort(
+    (a, b) => b.createdAt - a.createdAt
+  );
+
+  sortedChats.forEach((chat) => {
+    const item = document.createElement("div");
+
+    item.className =
+      "chat-item" +
+      (chat.id === currentChatId ? " active" : "");
+
+    item.textContent = chat.title || "New Chat";
+
+    item.addEventListener("click", () => {
+      currentChatId = chat.id;
+
+      saveChats();
+      renderChatList();
+      renderCurrentChat();
+
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove("open");
+      }
+    });
+
+    chatList.appendChild(item);
+  });
+}
+
+// ====================== RENDER CURRENT CHAT ======================
+
+function renderCurrentChat() {
+  const chat = getCurrentChat();
+
+  chatContainer.innerHTML = "";
+
+  chatTitle.textContent = chat.title || "New Chat";
+
+  chat.messages.forEach((msg) => {
     const div = document.createElement("div");
 
     div.className =
@@ -59,122 +145,45 @@ function renderChats() {
 
     div.textContent = msg.content;
 
-    chatBox.appendChild(div);
+    chatContainer.appendChild(div);
   });
 
-  chatBox.scrollTop = chatBox.scrollHeight;
+  chatContainer.scrollTop =
+    chatContainer.scrollHeight;
 }
-
-renderChats();
-
-// ====================== SIGN UP ======================
-
-signupBtn.addEventListener("click", async () => {
-
-  const email = emailInput.value.trim();
-
-  const password = passwordInput.value.trim();
-
-  if (!email || !password) {
-    alert("Enter email and password");
-    return;
-  }
-
-  try {
-
-    const { data, error } =
-      await supabaseClient.auth.signUp({
-        email,
-        password,
-      });
-
-    if (error) {
-      alert(error.message);
-      console.error(error);
-      return;
-    }
-
-    alert("Signup successful!");
-
-    console.log(data);
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("Signup failed");
-  }
-});
-
-// ====================== LOGIN ======================
-
-loginBtn.addEventListener("click", async () => {
-
-  const email = emailInput.value.trim();
-
-  const password = passwordInput.value.trim();
-
-  if (!email || !password) {
-    alert("Enter email and password");
-    return;
-  }
-
-  try {
-
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-    if (error) {
-      alert(error.message);
-      console.error(error);
-      return;
-    }
-
-    authModal.style.display = "none";
-
-    alert("Login successful!");
-
-    console.log(data);
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("Login failed");
-  }
-});
 
 // ====================== SEND MESSAGE ======================
 
 async function sendMessage() {
-
   const text = userInput.value.trim();
 
   if (!text) return;
 
-  messages.push({
+  const chat = getCurrentChat();
+
+  // Add user message
+  chat.messages.push({
     role: "user",
     content: text,
   });
 
-  renderChats();
+  // Update title from first user message
+  if (chat.messages.length === 1) {
+    chat.title = getChatTitle(chat.messages);
+  }
 
   saveChats();
+  renderChatList();
+  renderCurrentChat();
 
   userInput.value = "";
 
   try {
-
     const response = await fetch("/api/chat", {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         message: text,
       }),
@@ -182,63 +191,86 @@ async function sendMessage() {
 
     const data = await response.json();
 
-    messages.push({
+    chat.messages.push({
       role: "assistant",
       content: data.reply || "No response",
     });
 
-    renderChats();
+    saveChats();
+    renderCurrentChat();
+  } catch (error) {
+    console.error(error);
+
+    chat.messages.push({
+      role: "assistant",
+      content: "Error connecting to AI",
+    });
 
     saveChats();
+    renderCurrentChat();
+  }
+}
 
-  } catch (error) {
+// ====================== CLEAR CURRENT CHAT ======================
 
-  console.error(error);
+function clearCurrentChat() {
+  const chat = getCurrentChat();
 
-  messages.push({
-    role: "assistant",
-    content: "Error connecting to AI",
-  });
+  chat.messages = [];
+  chat.title = "New Chat";
 
-  renderChats();
   saveChats();
+  renderChatList();
+  renderCurrentChat();
 }
-}
 
-// ====================== SEND BUTTON ======================
+// ====================== AUTH ======================
 
-sendBtn.addEventListener(
-  "click",
-  sendMessage
-);
+signupBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
 
-// ====================== ENTER KEY ======================
-
-userInput.addEventListener(
-  "keydown",
-  (e) => {
-
-    if (e.key === "Enter") {
-      sendMessage();
-    }
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
   }
-);
 
-// ====================== CLEAR CHAT ======================
+  const { error } =
+    await supabaseClient.auth.signUp({
+      email,
+      password,
+    });
 
-clearBtn.addEventListener(
-  "click",
-  () => {
-
-    messages = [];
-
-    localStorage.removeItem(
-      "omega_chats"
-    );
-
-    renderChats();
+  if (error) {
+    alert(error.message);
+    return;
   }
-);
+
+  alert("Signup successful!");
+});
+
+loginBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  if (!email || !password) {
+    alert("Enter email and password");
+    return;
+  }
+
+  const { error } =
+    await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  authModal.style.display = "none";
+});
 
 // ====================== CHECK LOGIN ======================
 
@@ -257,7 +289,8 @@ async function checkUser() {
 // ====================== LOGOUT ======================
 
 async function logout() {
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -267,7 +300,42 @@ async function logout() {
   location.reload();
 }
 
+// ====================== EVENT LISTENERS ======================
+
+sendBtn.addEventListener("click", sendMessage);
+
+userInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    sendMessage();
+  }
+});
+
+clearBtn.addEventListener(
+  "click",
+  clearCurrentChat
+);
+
 logoutBtn.addEventListener("click", logout);
 
-// Run authentication check when page loads
+newChatBtn.addEventListener(
+  "click",
+  createNewChat
+);
+
+menuBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("open");
+});
+
+// ====================== INITIALIZATION ======================
+
+if (
+  !currentChatId ||
+  !chats[currentChatId]
+) {
+  createNewChat();
+} else {
+  renderChatList();
+  renderCurrentChat();
+}
+
 checkUser();
