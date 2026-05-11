@@ -93,6 +93,60 @@ function getCurrentChat() {
   return chats[currentChatId];
 }
 
+// ====================== RENAME CHAT ======================
+
+function renameChat(chatId) {
+  const chat = chats[chatId];
+
+  if (!chat) return;
+
+  const newTitle = prompt(
+    "Enter a new chat name:",
+    chat.title
+  );
+
+  if (!newTitle) return;
+
+  chat.title = newTitle.trim();
+
+  if (!chat.title) return;
+
+  saveChats();
+  renderChatList();
+  renderCurrentChat();
+}
+
+// ====================== DELETE CHAT ======================
+
+function deleteChat(chatId) {
+  const chat = chats[chatId];
+
+  if (!chat) return;
+
+  const confirmed = confirm(
+    `Delete "${chat.title}"?`
+  );
+
+  if (!confirmed) return;
+
+  delete chats[chatId];
+
+  const remainingChats = Object.keys(chats);
+
+  if (remainingChats.length === 0) {
+    createNewChat();
+    return;
+  }
+
+  if (currentChatId === chatId) {
+    currentChatId = remainingChats[0];
+  }
+
+  saveChats();
+  renderChatList();
+  renderCurrentChat();
+}
+
 // ====================== RENDER CHAT LIST ======================
 
 function renderChatList() {
@@ -109,8 +163,43 @@ function renderChatList() {
       "chat-item" +
       (chat.id === currentChatId ? " active" : "");
 
-    item.textContent = chat.title || "New Chat";
+    // Title
+    const title = document.createElement("span");
+    title.textContent = chat.title || "New Chat";
 
+    // Mini actions
+    const actions = document.createElement("div");
+    actions.className = "chat-actions-mini";
+
+    // Rename button
+    const renameBtn = document.createElement("button");
+    renameBtn.className = "chat-action-mini";
+    renameBtn.textContent = "✏️";
+    renameBtn.title = "Rename chat";
+
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      renameChat(chat.id);
+    });
+
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "chat-action-mini";
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.title = "Delete chat";
+
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteChat(chat.id);
+    });
+
+    actions.appendChild(renameBtn);
+    actions.appendChild(deleteBtn);
+
+    item.appendChild(title);
+    item.appendChild(actions);
+
+    // Select chat
     item.addEventListener("click", () => {
       currentChatId = chat.id;
 
@@ -167,7 +256,7 @@ async function sendMessage() {
     content: text,
   });
 
-  // Update title from first user message
+  // Set title from first user message
   if (chat.messages.length === 1) {
     chat.title = getChatTitle(chat.messages);
   }
@@ -224,7 +313,7 @@ function clearCurrentChat() {
   renderCurrentChat();
 }
 
-// ====================== AUTH ======================
+// ====================== SIGN UP ======================
 
 signupBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
@@ -248,6 +337,8 @@ signupBtn.addEventListener("click", async () => {
 
   alert("Signup successful!");
 });
+
+// ====================== LOGIN ======================
 
 loginBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
