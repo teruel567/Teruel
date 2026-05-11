@@ -412,3 +412,9 @@ body {
 .chat-action-mini:hover {
   background: #333;
     }
+/* ================= TYPING INDICATOR ================= */
+
+.typing {
+  font-style: italic;
+  opacity: 0.75;
+}
