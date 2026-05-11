@@ -107,9 +107,11 @@ function renameChat(chatId) {
 
   if (!newTitle) return;
 
-  chat.title = newTitle.trim();
+  const trimmedTitle = newTitle.trim();
 
-  if (!chat.title) return;
+  if (!trimmedTitle) return;
+
+  chat.title = trimmedTitle;
 
   saveChats();
   renderChatList();
@@ -167,12 +169,13 @@ function renderChatList() {
     const title = document.createElement("span");
     title.textContent = chat.title || "New Chat";
 
-    // Mini actions
+    // Actions
     const actions = document.createElement("div");
     actions.className = "chat-actions-mini";
 
-    // Rename button
-    const renameBtn = document.createElement("button");
+    // Rename
+    const renameBtn =
+      document.createElement("button");
     renameBtn.className = "chat-action-mini";
     renameBtn.textContent = "✏️";
     renameBtn.title = "Rename chat";
@@ -182,8 +185,9 @@ function renderChatList() {
       renameChat(chat.id);
     });
 
-    // Delete button
-    const deleteBtn = document.createElement("button");
+    // Delete
+    const deleteBtn =
+      document.createElement("button");
     deleteBtn.className = "chat-action-mini";
     deleteBtn.textContent = "🗑️";
     deleteBtn.title = "Delete chat";
@@ -228,9 +232,14 @@ function renderCurrentChat() {
   chat.messages.forEach((msg) => {
     const div = document.createElement("div");
 
+    const isTyping =
+      msg.role === "assistant" &&
+      msg.content === "Omega AI is typing...";
+
     div.className =
       "msg " +
-      (msg.role === "user" ? "user" : "bot");
+      (msg.role === "user" ? "user" : "bot") +
+      (isTyping ? " typing" : "");
 
     div.textContent = msg.content;
 
@@ -257,9 +266,19 @@ async function sendMessage() {
   });
 
   // Set title from first user message
-  if (chat.messages.length === 1) {
+  if (
+    chat.messages.filter(
+      (msg) => msg.role === "user"
+    ).length === 1
+  ) {
     chat.title = getChatTitle(chat.messages);
   }
+
+  // Add typing indicator
+  chat.messages.push({
+    role: "assistant",
+    content: "Omega AI is typing...",
+  });
 
   saveChats();
   renderChatList();
@@ -280,20 +299,22 @@ async function sendMessage() {
 
     const data = await response.json();
 
-    chat.messages.push({
-      role: "assistant",
-      content: data.reply || "No response",
-    });
+    // Replace typing indicator
+    chat.messages[
+      chat.messages.length - 1
+    ].content =
+      data.reply || "No response";
 
     saveChats();
     renderCurrentChat();
   } catch (error) {
     console.error(error);
 
-    chat.messages.push({
-      role: "assistant",
-      content: "Error connecting to AI",
-    });
+    // Replace typing indicator
+    chat.messages[
+      chat.messages.length - 1
+    ].content =
+      "Error connecting to AI";
 
     saveChats();
     renderCurrentChat();
@@ -317,7 +338,8 @@ function clearCurrentChat() {
 
 signupBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
+  const password =
+    passwordInput.value.trim();
 
   if (!email || !password) {
     alert("Enter email and password");
@@ -342,7 +364,8 @@ signupBtn.addEventListener("click", async () => {
 
 loginBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
+  const password =
+    passwordInput.value.trim();
 
   if (!email || !password) {
     alert("Enter email and password");
