@@ -2,19 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>Omega AI Assistant</title>
 
-  <link rel="stylesheet" href="/style.css">
-  <link rel="manifest" href="/manifest.json">
-</head>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
 
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
 <body>
 
-  <!-- AUTH MODAL -->
-  <div id="authModal" class="auth-modal">
-    <div class="auth-box">
+  <!-- ================= HEADER ================= -->
+  <header class="app-header">
+    <div class="header-left">
+      <button id="menuBtn" class="menu-btn">☰</button>
+
+      <div>
+        <h1>My chartbot</h1>
+        <p>Ask me anything</p>
+      </div>
+    </div>
+
+    <button id="headerMenuBtn" class="header-menu-btn">⋮</button>
+  </header>
+
+  <!-- ================= MAIN APP ================= -->
+  <div class="app-container">
+
+    <!-- ========== SIDEBAR ========== -->
+    <aside id="sidebar" class="sidebar">
+
+      <div class="sidebar-header">
+        <h2>Chats</h2>
+        <button id="newChatBtn" class="new-chat-btn">+ New</button>
+      </div>
+
+      <div id="chatList" class="chat-list">
+        <!-- Chat sessions will appear here -->
+      </div>
+    </aside>
+
+    <!-- ========== MAIN CHAT AREA ========== -->
+    <main class="chat-section">
+
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <h2 id="chatTitle">Omega AI Assistant</h2>
+
+        <div class="chat-actions">
+          <button id="clearBtn" class="action-btn">
+            Clear
+          </button>
+
+          <button id="logoutBtn" class="logout-btn">
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Messages -->
+      <div
+        id="chatContainer"
+        class="chat-container"
+      ></div>
+
+      <!-- Input Area -->
+      <div class="input-container">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="Type a message..."
+          autocomplete="off"
+        />
+
+        <button id="sendBtn">Send</button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ================= AUTH MODAL ================= -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
       <h2>Welcome</h2>
 
       <input
@@ -39,44 +116,17 @@
     </div>
   </div>
 
-  <!-- HEADER -->
-  <header class="header">
-  <h2>Omega AI Assistant</h2>
+  <!-- ================= SCRIPT ================= -->
+  <script src="script.js"></script>
 
-  <div class="header-actions">
-    <button id="clearBtn">
-      Clear
-    </button>
-
-    <button id="logoutBtn">
-      Logout
-    </button>
-  </div>
-</header>
-
-  <!-- CHAT -->
-  <div id="chatContainer"></div>
-
-  <!-- INPUT -->
-  <div class="input-area">
-
-    <input
-      id="userInput"
-      type="text"
-      placeholder="Type a message..."
-    />
-
-    <button id="sendBtn">
-      Send
-    </button>
-
-  </div>
-
-  <!-- SUPABASE -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- MAIN SCRIPT -->
-  <script src="/script.js"></script>
+  <!-- ================= SERVICE WORKER ================= -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("service-worker.js")
+        .catch(console.error);
+    }
+  </script>
 
 </body>
-</html>
+    </html>
