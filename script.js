@@ -222,7 +222,6 @@ function renderChatList() {
 }
 
 // ====================== RENDER MESSAGES ======================
-
 function renderMessages() {
   if (!chatBox) return;
 
@@ -234,20 +233,56 @@ function renderMessages() {
 
   const messages = chats[currentChatId].messages;
 
-  messages.forEach(function (msg) {
+  messages.forEach((msg) => {
     const div = document.createElement("div");
-
     div.className =
       "msg " +
       (msg.role === "user" ? "user" : "bot");
 
-    div.textContent = msg.content;
+    if (msg.role === "assistant") {
+      // Render markdown
+      div.innerHTML = marked.parse(msg.content || "");
+
+      // Highlight code blocks
+      div.querySelectorAll("pre code").forEach((block) => {
+        hljs.highlightElement(block);
+
+        // Create copy button
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "copy-code-btn";
+        copyBtn.textContent = "Copy";
+
+        copyBtn.addEventListener("click", async () => {
+          const code = block.textContent;
+
+          try {
+            await navigator.clipboard.writeText(code);
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => {
+              copyBtn.textContent = "Copy";
+            }, 2000);
+          } catch (err) {
+            alert("Failed to copy code");
+          }
+        });
+
+        // Wrap pre element so button can be positioned
+        const pre = block.parentElement;
+        pre.style.position = "relative";
+        pre.appendChild(copyBtn);
+      });
+    } else {
+      // User messages remain plain text
+      div.textContent = msg.content;
+    }
 
     chatBox.appendChild(div);
   });
 
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+
 
 // ====================== TYPING INDICATOR ======================
 
