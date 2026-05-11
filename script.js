@@ -380,7 +380,6 @@ async function loadChatsFromCloud() {
 }
 
 // ====================== SEND MESSAGE ======================
-
 async function sendMessage() {
   const text = userInput.value.trim();
 
@@ -392,6 +391,7 @@ async function sendMessage() {
 
   const messages = getCurrentMessages();
 
+  // Add user message
   messages.push({
     role: "user",
     content: text,
@@ -407,13 +407,20 @@ async function sendMessage() {
   }
 
   setCurrentMessages(messages);
-
   renderChatList();
   renderMessages();
 
   userInput.value = "";
 
-  showTypingIndicator();
+  // Create empty assistant message
+  const assistantMessage = {
+    role: "assistant",
+    content: "",
+  };
+
+  messages.push(assistantMessage);
+  setCurrentMessages(messages);
+  renderMessages();
 
   try {
     const response = await fetch("/api/chat", {
@@ -427,42 +434,50 @@ async function sendMessage() {
       }),
     });
 
-    const data = await response.json();
+    if (!response.ok || !response.body) {
+      throw new Error("Streaming failed");
+    }
 
-    removeTypingIndicator();
+    const reader =
+      response.body.getReader();
+    const decoder = new TextDecoder();
 
-    messages.push({
-      role: "assistant",
-      content:
-        data.reply || "No response",
-    });
+    let fullReply = "";
 
-    setCurrentMessages(messages);
+    while (true) {
+      const { value, done } =
+        await reader.read();
 
-    renderMessages();
-    renderChatList();
+      if (done) break;
+
+      const chunk = decoder.decode(
+        value,
+        {
+          stream: true,
+        }
+      );
+
+      fullReply += chunk;
+      assistantMessage.content =
+        fullReply;
+
+      setCurrentMessages(messages);
+      renderMessages();
+    }
 
     await syncCurrentChatToCloud();
   } catch (error) {
     console.error(error);
 
-    removeTypingIndicator();
-
-    messages.push({
-      role: "assistant",
-      content:
-        "Error connecting to AI",
-    });
+    assistantMessage.content =
+      "Error connecting to AI";
 
     setCurrentMessages(messages);
-
     renderMessages();
-    renderChatList();
 
     await syncCurrentChatToCloud();
   }
-}
-
+            }
 // ====================== CLEAR CHAT ======================
 
 function clearCurrentChat() {
