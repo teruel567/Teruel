@@ -382,3 +382,33 @@ body {
     font-size: 2.2rem;
   }
                              }
+/* ================= CHAT ITEM ACTIONS ================= */
+
+.chat-item {
+  position: relative;
+  padding-right: 80px;
+}
+
+.chat-actions-mini {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 6px;
+}
+
+.chat-action-mini {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: #222;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.chat-action-mini:hover {
+  background: #333;
+    }
