@@ -1,7 +1,7 @@
 // ====================== SUPABASE ======================
 
 const SUPABASE_URL = "https://twnphrrfcbzbuovcxujg.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_K4oguvLu8U5cti-YP32yHw_DkF6LqEB";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // Replace with your real key
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -10,192 +10,104 @@ const supabaseClient = supabase.createClient(
 
 // ====================== ELEMENTS ======================
 
-const sidebar = document.getElementById("sidebar");
-const menuBtn = document.getElementById("menuBtn");
-const newChatBtn = document.getElementById("newChatBtn");
-const chatList = document.getElementById("chatList");
-const chatTitle = document.getElementById("chatTitle");
-
-const chatContainer = document.getElementById("chatContainer");
+const chatBox = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
-const authModal = document.getElementById("authModal");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const authModal = document.getElementById("authModal");
+
+const chatList = document.getElementById("chatList");
+const newChatBtn = document.getElementById("newChatBtn");
 
 // ====================== STATE ======================
 
-let chats =
-  JSON.parse(localStorage.getItem("omega_multi_chats")) || {};
-
-let currentChatId =
-  localStorage.getItem("omega_current_chat_id") || null;
+let chats = {};
+let currentChatId = null;
+let typingIndicator = null;
 
 // ====================== HELPERS ======================
 
-function generateChatId() {
-  return "chat_" + Date.now();
+function generateId() {
+  return "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
 }
 
-function getChatTitle(messages) {
-  const firstUserMessage = messages.find(
-    (msg) => msg.role === "user"
-  );
+function getCurrentMessages() {
+  if (!currentChatId || !chats[currentChatId]) return [];
+  return chats[currentChatId].messages || [];
+}
 
-  if (!firstUserMessage) {
-    return "New Chat";
+function saveLocal() {
+  localStorage.setItem("omega_chats", JSON.stringify(chats));
+  localStorage.setItem("omega_current_chat", currentChatId || "");
+}
+
+function loadLocal() {
+  chats = JSON.parse(localStorage.getItem("omega_chats")) || {};
+  currentChatId = localStorage.getItem("omega_current_chat");
+
+  if (currentChatId && !chats[currentChatId]) {
+    currentChatId = null;
   }
 
-  return firstUserMessage.content.slice(0, 30);
-}
+  if (!currentChatId && Object.keys(chats).length > 0) {
+    currentChatId = Object.keys(chats)[0];
+  }
 
-function saveChats() {
-  localStorage.setItem(
-    "omega_multi_chats",
-    JSON.stringify(chats)
-  );
-
-  localStorage.setItem(
-    "omega_current_chat_id",
-    currentChatId
-  );
-}
-
-function createNewChat() {
-  const chatId = generateChatId();
-
-  chats[chatId] = {
-    id: chatId,
-    title: "New Chat",
-    messages: [],
-    createdAt: Date.now(),
-  };
-
-  currentChatId = chatId;
-
-  saveChats();
-  renderChatList();
-  renderCurrentChat();
-
-  userInput.focus();
-}
-
-function getCurrentChat() {
-  if (!currentChatId || !chats[currentChatId]) {
+  if (!currentChatId) {
     createNewChat();
   }
-
-  return chats[currentChatId];
-}
-
-// ====================== RENAME CHAT ======================
-
-function renameChat(chatId) {
-  const chat = chats[chatId];
-
-  if (!chat) return;
-
-  const newTitle = prompt(
-    "Enter a new chat name:",
-    chat.title
-  );
-
-  if (!newTitle) return;
-
-  const trimmedTitle = newTitle.trim();
-
-  if (!trimmedTitle) return;
-
-  chat.title = trimmedTitle;
-
-  saveChats();
-  renderChatList();
-  renderCurrentChat();
-}
-
-// ====================== DELETE CHAT ======================
-
-function deleteChat(chatId) {
-  const chat = chats[chatId];
-
-  if (!chat) return;
-
-  const confirmed = confirm(
-    `Delete "${chat.title}"?`
-  );
-
-  if (!confirmed) return;
-
-  delete chats[chatId];
-
-  const remainingChats = Object.keys(chats);
-
-  if (remainingChats.length === 0) {
-    createNewChat();
-    return;
-  }
-
-  if (currentChatId === chatId) {
-    currentChatId = remainingChats[0];
-  }
-
-  saveChats();
-  renderChatList();
-  renderCurrentChat();
 }
 
 // ====================== RENDER CHAT LIST ======================
 
 function renderChatList() {
+  if (!chatList) return;
+
   chatList.innerHTML = "";
 
-  const sortedChats = Object.values(chats).sort(
-    (a, b) => b.createdAt - a.createdAt
-  );
+  const chatIds = Object.keys(chats);
 
-  sortedChats.forEach((chat) => {
+  chatIds.sort((a, b) => {
+    return new Date(chats[b].updated_at || 0) - new Date(chats[a].updated_at || 0);
+  });
+
+  chatIds.forEach((chatId) => {
+    const chat = chats[chatId];
+
     const item = document.createElement("div");
+    item.className = "chat-item" + (chatId === currentChatId ? " active" : "");
 
-    item.className =
-      "chat-item" +
-      (chat.id === currentChatId ? " active" : "");
-
-    // Title
     const title = document.createElement("span");
     title.textContent = chat.title || "New Chat";
+    title.onclick = () => {
+      currentChatId = chatId;
+      saveLocal();
+      renderChatList();
+      renderChats();
+    };
 
-    // Actions
     const actions = document.createElement("div");
-    actions.className = "chat-actions-mini";
+    actions.className = "chat-actions";
 
-    // Rename
-    const renameBtn =
-      document.createElement("button");
-    renameBtn.className = "chat-action-mini";
+    const renameBtn = document.createElement("button");
     renameBtn.textContent = "✏️";
-    renameBtn.title = "Rename chat";
-
-    renameBtn.addEventListener("click", (e) => {
+    renameBtn.onclick = (e) => {
       e.stopPropagation();
-      renameChat(chat.id);
-    });
+      renameChat(chatId);
+    };
 
-    // Delete
-    const deleteBtn =
-      document.createElement("button");
-    deleteBtn.className = "chat-action-mini";
+    const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "🗑️";
-    deleteBtn.title = "Delete chat";
-
-    deleteBtn.addEventListener("click", (e) => {
+    deleteBtn.onclick = async (e) => {
       e.stopPropagation();
-      deleteChat(chat.id);
-    });
+      await deleteChat(chatId);
+    };
 
     actions.appendChild(renameBtn);
     actions.appendChild(deleteBtn);
@@ -203,180 +115,247 @@ function renderChatList() {
     item.appendChild(title);
     item.appendChild(actions);
 
-    // Select chat
-    item.addEventListener("click", () => {
-      currentChatId = chat.id;
-
-      saveChats();
-      renderChatList();
-      renderCurrentChat();
-
-      if (window.innerWidth <= 768) {
-        sidebar.classList.remove("open");
-      }
-    });
-
     chatList.appendChild(item);
   });
 }
 
-// ====================== RENDER CURRENT CHAT ======================
+// ====================== RENDER CHATS ======================
 
-function renderCurrentChat() {
-  const chat = getCurrentChat();
+function renderChats() {
+  if (!chatBox) return;
 
-  chatContainer.innerHTML = "";
+  chatBox.innerHTML = "";
 
-  chatTitle.textContent = chat.title || "New Chat";
+  const messages = getCurrentMessages();
 
-  chat.messages.forEach((msg) => {
+  messages.forEach((msg) => {
     const div = document.createElement("div");
-
-    const isTyping =
-      msg.role === "assistant" &&
-      msg.content === "Omega AI is typing...";
-
     div.className =
-      "msg " +
-      (msg.role === "user" ? "user" : "bot") +
-      (isTyping ? " typing" : "");
-
+      "msg " + (msg.role === "user" ? "user" : "bot");
     div.textContent = msg.content;
-
-    chatContainer.appendChild(div);
+    chatBox.appendChild(div);
   });
 
-  chatContainer.scrollTop =
-    chatContainer.scrollHeight;
+  if (typingIndicator) {
+    chatBox.appendChild(typingIndicator);
+  }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ====================== TYPING INDICATOR ======================
+
+function showTypingIndicator() {
+  typingIndicator = document.createElement("div");
+  typingIndicator.className = "msg bot";
+  typingIndicator.textContent = "Typing...";
+  renderChats();
+}
+
+function hideTypingIndicator() {
+  typingIndicator = null;
+  renderChats();
+}
+
+// ====================== CHAT MANAGEMENT ======================
+
+function createNewChat() {
+  const id = generateId();
+
+  chats[id] = {
+    id,
+    title: "New Chat",
+    messages: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  currentChatId = id;
+
+  saveLocal();
+  renderChatList();
+  renderChats();
+
+  return id;
+}
+
+function renameChat(chatId) {
+  const currentTitle = chats[chatId]?.title || "New Chat";
+  const newTitle = prompt("Enter new chat name:", currentTitle);
+
+  if (!newTitle) return;
+
+  chats[chatId].title = newTitle.trim();
+  chats[chatId].updated_at = new Date().toISOString();
+
+  saveLocal();
+  renderChatList();
+  syncChatsToCloud();
+}
+
+async function deleteChat(chatId) {
+  if (!confirm("Delete this chat?")) return;
+
+  delete chats[chatId];
+
+  if (currentChatId === chatId) {
+    const remaining = Object.keys(chats);
+    currentChatId = remaining.length ? remaining[0] : null;
+  }
+
+  if (!currentChatId) {
+    createNewChat();
+  }
+
+  saveLocal();
+  renderChatList();
+  renderChats();
+
+  await syncChatsToCloud();
+}
+
+// ====================== SAVE CURRENT CHAT ======================
+
+function saveCurrentChat() {
+  if (!currentChatId || !chats[currentChatId]) return;
+
+  chats[currentChatId].updated_at = new Date().toISOString();
+
+  // Auto-set title from first user message
+  if (
+    chats[currentChatId].title === "New Chat" &&
+    chats[currentChatId].messages.length > 0
+  ) {
+    const firstUser = chats[currentChatId].messages.find(
+      (m) => m.role === "user"
+    );
+
+    if (firstUser) {
+      chats[currentChatId].title =
+        firstUser.content.substring(0, 30);
+    }
+  }
+
+  saveLocal();
+  renderChatList();
 }
 
 // ====================== SEND MESSAGE ======================
 
 async function sendMessage() {
   const text = userInput.value.trim();
-
   if (!text) return;
 
-  const chat = getCurrentChat();
-
-  // Add user message
-  chat.messages.push({
-    role: "user",
-    content: text,
-  });
-
-  // Set title from first user message
-  if (
-    chat.messages.filter(
-      (msg) => msg.role === "user"
-    ).length === 1
-  ) {
-    chat.title = getChatTitle(chat.messages);
+  if (!currentChatId) {
+    createNewChat();
   }
 
-  // Add typing indicator
-  chat.messages.push({
-    role: "assistant",
-    content: "Omega AI is typing...",
+  chats[currentChatId].messages.push({
+    role: "user",
+    content: text
   });
 
-  saveChats();
-  renderChatList();
-  renderCurrentChat();
+  saveCurrentChat();
+  renderChats();
 
   userInput.value = "";
+
+  showTypingIndicator();
 
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        message: text,
-      }),
+        message: text
+      })
     });
 
     const data = await response.json();
 
-    // Replace typing indicator
-    chat.messages[
-      chat.messages.length - 1
-    ].content =
-      data.reply || "No response";
+    hideTypingIndicator();
 
-    saveChats();
-    renderCurrentChat();
+    chats[currentChatId].messages.push({
+      role: "assistant",
+      content: data.reply || "No response"
+    });
+
+    saveCurrentChat();
+    renderChats();
+
+    await syncChatsToCloud();
   } catch (error) {
     console.error(error);
 
-    // Replace typing indicator
-    chat.messages[
-      chat.messages.length - 1
-    ].content =
-      "Error connecting to AI";
+    hideTypingIndicator();
 
-    saveChats();
-    renderCurrentChat();
+    chats[currentChatId].messages.push({
+      role: "assistant",
+      content: "Error connecting to AI"
+    });
+
+    saveCurrentChat();
+    renderChats();
   }
 }
 
-// ====================== CLEAR CURRENT CHAT ======================
+// ====================== CLEAR CHAT ======================
 
-function clearCurrentChat() {
-  const chat = getCurrentChat();
+async function clearCurrentChat() {
+  if (!currentChatId || !chats[currentChatId]) return;
 
-  chat.messages = [];
-  chat.title = "New Chat";
+  if (!confirm("Clear this chat?")) return;
 
-  saveChats();
-  renderChatList();
-  renderCurrentChat();
+  chats[currentChatId].messages = [];
+  chats[currentChatId].updated_at = new Date().toISOString();
+
+  saveCurrentChat();
+  renderChats();
+
+  await syncChatsToCloud();
 }
 
-// ====================== SIGN UP ======================
+// ====================== AUTH - SIGN UP ======================
 
-signupBtn.addEventListener("click", async () => {
+signupBtn?.addEventListener("click", async () => {
   const email = emailInput.value.trim();
-  const password =
-    passwordInput.value.trim();
+  const password = passwordInput.value.trim();
 
   if (!email || !password) {
     alert("Enter email and password");
     return;
   }
 
-  const { error } =
-    await supabaseClient.auth.signUp({
-      email,
-      password,
-    });
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
 
   if (error) {
     alert(error.message);
     return;
   }
 
-  alert("Signup successful!");
+  alert("Signup successful! Check your email if confirmation is enabled.");
 });
 
-// ====================== LOGIN ======================
+// ====================== AUTH - LOGIN ======================
 
-loginBtn.addEventListener("click", async () => {
+loginBtn?.addEventListener("click", async () => {
   const email = emailInput.value.trim();
-  const password =
-    passwordInput.value.trim();
+  const password = passwordInput.value.trim();
 
   if (!email || !password) {
     alert("Enter email and password");
     return;
   }
 
-  const { error } =
-    await supabaseClient.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
   if (error) {
     alert(error.message);
@@ -384,27 +363,19 @@ loginBtn.addEventListener("click", async () => {
   }
 
   authModal.style.display = "none";
+
+  await loadChatsFromCloud();
+
+  renderChatList();
+  renderChats();
+
+  alert("Login successful!");
 });
 
-// ====================== CHECK LOGIN ======================
-
-async function checkUser() {
-  const {
-    data: { session },
-  } = await supabaseClient.auth.getSession();
-
-  if (session) {
-    authModal.style.display = "none";
-  } else {
-    authModal.style.display = "flex";
-  }
-}
-
-// ====================== LOGOUT ======================
+// ====================== AUTH - LOGOUT ======================
 
 async function logout() {
-  const { error } =
-    await supabaseClient.auth.signOut();
+  const { error } = await supabaseClient.auth.signOut();
 
   if (error) {
     alert(error.message);
@@ -414,42 +385,120 @@ async function logout() {
   location.reload();
 }
 
+logoutBtn?.addEventListener("click", logout);
+
+// ====================== CHECK USER ======================
+
+async function checkUser() {
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+
+  if (session) {
+    authModal.style.display = "none";
+    await loadChatsFromCloud();
+  } else {
+    authModal.style.display = "flex";
+    loadLocal();
+  }
+
+  renderChatList();
+  renderChats();
+}
+
+// ====================== CLOUD SYNC ======================
+
+async function syncChatsToCloud() {
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+
+  if (!session) return;
+
+  const userId = session.user.id;
+
+  for (const chatId in chats) {
+    const chat = chats[chatId];
+
+    const { error } = await supabaseClient
+      .from("chats")
+      .upsert({
+        id: chat.id,
+        user_id: userId,
+        title: chat.title,
+        messages: chat.messages,
+        created_at: chat.created_at,
+        updated_at: chat.updated_at
+      });
+
+    if (error) {
+      console.error("Sync error:", error);
+    }
+  }
+}
+
+// ====================== LOAD CHATS FROM CLOUD ======================
+
+async function loadChatsFromCloud() {
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+
+  if (!session) {
+    loadLocal();
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("chats")
+    .select("*")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("Load cloud error:", error);
+    loadLocal();
+    return;
+  }
+
+  chats = {};
+
+  data.forEach((chat) => {
+    chats[chat.id] = {
+      id: chat.id,
+      title: chat.title,
+      messages: chat.messages || [],
+      created_at: chat.created_at,
+      updated_at: chat.updated_at
+    };
+  });
+
+  if (Object.keys(chats).length === 0) {
+    createNewChat();
+  } else {
+    currentChatId = Object.keys(chats)[0];
+  }
+
+  saveLocal();
+}
+
 // ====================== EVENT LISTENERS ======================
 
-sendBtn.addEventListener("click", sendMessage);
+sendBtn?.addEventListener("click", sendMessage);
 
-userInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+userInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
     sendMessage();
   }
 });
 
-clearBtn.addEventListener(
-  "click",
-  clearCurrentChat
-);
+clearBtn?.addEventListener("click", clearCurrentChat);
 
-logoutBtn.addEventListener("click", logout);
-
-newChatBtn.addEventListener(
-  "click",
-  createNewChat
-);
-
-menuBtn.addEventListener("click", () => {
-  sidebar.classList.toggle("open");
+newChatBtn?.addEventListener("click", async () => {
+  createNewChat();
+  await syncChatsToCloud();
 });
 
-// ====================== INITIALIZATION ======================
-
-if (
-  !currentChatId ||
-  !chats[currentChatId]
-) {
-  createNewChat();
-} else {
-  renderChatList();
-  renderCurrentChat();
-}
+// ====================== START APP ======================
 
 checkUser();
