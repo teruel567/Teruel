@@ -10,17 +10,21 @@ const supabaseClient = supabase.createClient(
 
 // ====================== ELEMENTS ======================
 
+// Sidebar
 const sidebar = document.getElementById("sidebar");
-const sidebarToggle = document.getElementById("sidebarToggle");
+const sidebarToggle =
+  document.getElementById("sidebarToggle");
 const newChatBtn = document.getElementById("newChatBtn");
 const chatList = document.getElementById("chatList");
 
+// Chat area
 const chatBox = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
+// Auth
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const emailInput = document.getElementById("email");
@@ -30,18 +34,27 @@ const authModal = document.getElementById("authModal");
 // ====================== STATE ======================
 
 let chats = JSON.parse(localStorage.getItem("omega_chats_v2")) || {};
-let currentChatId = localStorage.getItem("omega_current_chat") || null;
-let realtimeChannel = null;
+let currentChatId =
+  localStorage.getItem("omega_current_chat") || null;
 
 // ====================== HELPERS ======================
 
 function generateId() {
-  return Date.now().toString() + Math.random().toString(36).slice(2, 9);
+  return (
+    Date.now().toString() +
+    Math.random().toString(36).substring(2, 9)
+  );
 }
 
 function saveLocal() {
-  localStorage.setItem("omega_chats_v2", JSON.stringify(chats));
-  localStorage.setItem("omega_current_chat", currentChatId || "");
+  localStorage.setItem(
+    "omega_chats_v2",
+    JSON.stringify(chats)
+  );
+  localStorage.setItem(
+    "omega_current_chat",
+    currentChatId || ""
+  );
 }
 
 function getCurrentMessages() {
@@ -53,12 +66,11 @@ function setCurrentMessages(messages) {
   if (!currentChatId || !chats[currentChatId]) return;
 
   chats[currentChatId].messages = messages;
-  chats[currentChatId].updated_at = new Date().toISOString();
+  chats[currentChatId].updated_at =
+    new Date().toISOString();
 
   saveLocal();
 }
-
-// ====================== UI ======================
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -66,39 +78,41 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ====================== SIDEBAR ======================
+// ====================== SIDEBAR TOGGLE ======================
+// Fixed version: safely checks if elements exist
 
 if (sidebarToggle && sidebar) {
-  sidebarToggle.addEventListener("click", (e) => {
+  sidebarToggle.addEventListener("click", function (e) {
     e.stopPropagation();
     sidebar.classList.toggle("open");
   });
 }
 
-document.addEventListener("click", (e) => {
+// Close sidebar when tapping outside on mobile
+document.addEventListener("click", function (e) {
   if (
     window.innerWidth <= 768 &&
     sidebar &&
     sidebar.classList.contains("open") &&
     !sidebar.contains(e.target) &&
+    sidebarToggle &&
     !sidebarToggle.contains(e.target)
   ) {
     sidebar.classList.remove("open");
   }
 });
 
-// ====================== CHAT CORE ======================
+// ====================== CHAT MANAGEMENT ======================
 
 function createNewChat() {
   const id = generateId();
 
   chats[id] = {
-    id,
+    id: id,
     title: "New Chat",
     messages: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    deleted: false,
   };
 
   currentChatId = id;
@@ -107,199 +121,322 @@ function createNewChat() {
   renderChatList();
   renderMessages();
   syncCurrentChatToCloud();
+
+  // Close sidebar on mobile
+  if (window.innerWidth <= 768 && sidebar) {
+    sidebar.classList.remove("open");
+  }
 }
 
-function selectChat(id) {
-  currentChatId = id;
+function selectChat(chatId) {
+  currentChatId = chatId;
 
   saveLocal();
   renderChatList();
   renderMessages();
+
+  // Close sidebar on mobile
+  if (window.innerWidth <= 768 && sidebar) {
+    sidebar.classList.remove("open");
+  }
 }
 
-function renameChat(id) {
-  const newTitle = prompt("Rename chat:", chats[id].title);
-  if (!newTitle) return;
+function renameChat(chatId) {
+  const currentTitle = chats[chatId].title;
+  const newTitle = prompt("Rename chat:", currentTitle);
 
-  chats[id].title = newTitle.trim();
-  chats[id].updated_at = new Date().toISOString();
+  if (!newTitle || !newTitle.trim()) return;
+
+  chats[chatId].title = newTitle.trim();
+  chats[chatId].updated_at =
+    new Date().toISOString();
 
   saveLocal();
   renderChatList();
   syncCurrentChatToCloud();
 }
 
-async function deleteChat(id) {
+async function deleteChat(chatId) {
   if (!confirm("Delete this chat?")) return;
 
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  try {
+    // Get logged in user
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
 
-  if (session) {
-    await supabaseClient
-      .from("chats")
-      .update({ deleted: true })
-      .eq("id", id)
-      .eq("user_id", session.user.id);
+    // Delete from Supabase cloud database
+    if (session) {
+      const { error } = await supabaseClient
+        .from("chats")
+        .delete()
+        .eq("id", chatId)
+        .eq("user_id", session.user.id);
+
+      if (error) {
+        console.error("Cloud delete error:", error);
+      }
+    }
+
+    // Delete locally
+    delete chats[chatId];
+
+    // Fix current selected chat
+    if (currentChatId === chatId) {
+      const remainingChats = Object.keys(chats);
+
+      currentChatId =
+        remainingChats.length > 0
+          ? remainingChats[0]
+          : null;
+    }
+
+    // Save local changes
+    saveLocal();
+
+    // Re-render UI
+    renderChatList();
+    renderMessages();
+
+    // Create new chat if empty
+    if (!currentChatId) {
+      createNewChat();
+    }
+  } catch (error) {
+    console.error("Delete chat error:", error);
   }
-
-  delete chats[id];
-
-  if (currentChatId === id) {
-    const remaining = Object.keys(chats);
-    currentChatId = remaining.length ? remaining[0] : null;
-  }
-
-  saveLocal();
-  renderChatList();
-  renderMessages();
-
-  if (!currentChatId) createNewChat();
 }
 
+// Make functions available globally
 window.renameChat = renameChat;
 window.deleteChat = deleteChat;
 
-// ====================== RENDER ======================
+// ====================== RENDER CHAT LIST ======================
 
 function renderChatList() {
   if (!chatList) return;
 
   chatList.innerHTML = "";
 
-  Object.values(chats)
-    .filter(c => !c.deleted)
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .forEach(chat => {
-      const div = document.createElement("div");
+  const sortedChats = Object.values(chats).sort(
+    function (a, b) {
+      return (
+        new Date(b.updated_at) -
+        new Date(a.updated_at)
+      );
+    }
+  );
 
-      div.className = "chat-item" + (chat.id === currentChatId ? " active" : "");
+  sortedChats.forEach(function (chat) {
+    const item = document.createElement("div");
 
-      div.innerHTML = `
-        <span>${escapeHtml(chat.title)}</span>
-        <div>
-          <button onclick="renameChat('${chat.id}')">✏️</button>
-          <button onclick="deleteChat('${chat.id}')">🗑️</button>
-        </div>
-      `;
+    item.className =
+      "chat-item" +
+      (chat.id === currentChatId ? " active" : "");
 
-      div.addEventListener("click", (e) => {
-        if (e.target.tagName === "BUTTON") return;
-        selectChat(chat.id);
-      });
+    item.innerHTML = `
+      <span class="chat-title">${escapeHtml(
+        chat.title
+      )}</span>
+      <div class="chat-actions">
+        <button onclick="renameChat('${chat.id}')">✏️</button>
+        <button onclick="deleteChat('${chat.id}')">🗑️</button>
+      </div>
+    `;
 
-      chatList.appendChild(div);
+    item.addEventListener("click", function (e) {
+      if (e.target.tagName === "BUTTON") return;
+      selectChat(chat.id);
     });
+
+    chatList.appendChild(item);
+  });
 }
 
+// ====================== RENDER MESSAGES ======================
 function renderMessages() {
   if (!chatBox) return;
 
   chatBox.innerHTML = "";
 
-  if (!currentChatId || !chats[currentChatId]) return;
+  if (!currentChatId || !chats[currentChatId]) {
+    return;
+  }
 
-  chats[currentChatId].messages.forEach(msg => {
+  const messages = chats[currentChatId].messages;
+
+  messages.forEach((msg) => {
     const div = document.createElement("div");
-    div.className = "msg " + (msg.role === "user" ? "user" : "bot");
+    div.className =
+      "msg " +
+      (msg.role === "user" ? "user" : "bot");
 
-    div.textContent = msg.content;
+    if (msg.role === "assistant") {
+      // Render markdown
+      div.innerHTML = marked.parse(msg.content || "");
+
+      // Highlight code blocks
+      div.querySelectorAll("pre code").forEach((block) => {
+        hljs.highlightElement(block);
+
+        // Create copy button
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "copy-code-btn";
+        copyBtn.textContent = "Copy";
+
+        copyBtn.addEventListener("click", async () => {
+          const code = block.textContent;
+
+          try {
+            await navigator.clipboard.writeText(code);
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => {
+              copyBtn.textContent = "Copy";
+            }, 2000);
+          } catch (err) {
+            alert("Failed to copy code");
+          }
+        });
+
+        // Wrap pre element so button can be positioned
+        const pre = block.parentElement;
+        pre.style.position = "relative";
+        pre.appendChild(copyBtn);
+      });
+    } else {
+      // User messages remain plain text
+      div.textContent = msg.content;
+    }
+
     chatBox.appendChild(div);
   });
 
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ====================== CLOUD ======================
+
+
+// ====================== TYPING INDICATOR ======================
+
+function showTypingIndicator() {
+  const div = document.createElement("div");
+  div.className = "msg bot";
+  div.id = "typingIndicator";
+  div.textContent = "Typing...";
+
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const typing =
+    document.getElementById("typingIndicator");
+
+  if (typing) typing.remove();
+}
+
+// ====================== CLOUD SYNC ======================
 
 async function syncCurrentChatToCloud() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  try {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
 
-  if (!session || !currentChatId || !chats[currentChatId]) return;
+    if (
+      !session ||
+      !currentChatId ||
+      !chats[currentChatId]
+    ) {
+      return;
+    }
 
-  const chat = chats[currentChatId];
+    const chat = chats[currentChatId];
 
-  await supabaseClient.from("chats").upsert({
-    id: chat.id,
-    user_id: session.user.id,
-    title: chat.title,
-    messages: chat.messages,
-    updated_at: new Date().toISOString(),
-    deleted: false,
-  });
+    await supabaseClient.from("chats").upsert({
+      id: chat.id,
+      user_id: session.user.id,
+      title: chat.title,
+      messages: chat.messages,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Cloud sync error:", error);
+  }
 }
 
 async function loadChatsFromCloud() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) return;
+  try {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
 
-  const { data } = await supabaseClient
-    .from("chats")
-    .select("*")
-    .eq("user_id", session.user.id);
+    if (!session) return;
 
-  const cloud = {};
+    const { data, error } = await supabaseClient
+      .from("chats")
+      .select("*")
+      .order("updated_at", {
+        ascending: false,
+      });
 
-  data.forEach(chat => {
-    if (chat.deleted) return;
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-    cloud[chat.id] = chat;
-  });
+    if (data && data.length > 0) {
+      data.forEach(function (chat) {
+        chats[chat.id] = {
+          id: chat.id,
+          title: chat.title,
+          messages: chat.messages || [],
+          created_at:
+            chat.created_at ||
+            new Date().toISOString(),
+          updated_at:
+            chat.updated_at ||
+            new Date().toISOString(),
+        };
+      });
 
-  chats = { ...chats, ...cloud };
-
-  saveLocal();
-  renderChatList();
-  renderMessages();
-}
-
-// ====================== REALTIME ======================
-
-function startRealtimeSync(session) {
-  if (!session) return;
-
-  if (realtimeChannel) {
-    supabaseClient.removeChannel(realtimeChannel);
-  }
-
-  realtimeChannel = supabaseClient
-    .channel("chats-realtime")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "chats",
-        filter: `user_id=eq.${session.user.id}`,
-      },
-      (payload) => {
-        const chat = payload.new;
-        if (!chat) return;
-
-        if (chat.deleted) {
-          delete chats[chat.id];
-        } else {
-          chats[chat.id] = chat;
-        }
-
-        saveLocal();
-        renderChatList();
-        renderMessages();
+      if (!currentChatId) {
+        currentChatId = data[0].id;
       }
-    )
-    .subscribe();
+
+      saveLocal();
+    }
+  } catch (error) {
+    console.error("Load chats error:", error);
+  }
 }
 
-// ====================== SEND ======================
+// ====================== SEND MESSAGE ======================
 
 async function sendMessage() {
   const text = userInput.value.trim();
+
   if (!text) return;
 
-  if (!currentChatId) createNewChat();
+  if (!currentChatId || !chats[currentChatId]) {
+    createNewChat();
+  }
 
   const messages = getCurrentMessages();
 
-  messages.push({ role: "user", content: text });
+  messages.push({
+    role: "user",
+    content: text,
+  });
+
+  // Auto title from first message
+  if (
+    chats[currentChatId].title === "New Chat" &&
+    messages.length === 1
+  ) {
+    chats[currentChatId].title =
+      text.substring(0, 30);
+  }
 
   setCurrentMessages(messages);
 
@@ -308,39 +445,94 @@ async function sendMessage() {
 
   userInput.value = "";
 
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: text }),
-  });
+  showTypingIndicator();
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
+  try {
+    const response = await fetch("/api/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: text,
+  }),
+});
 
-  const assistantMessage = { role: "assistant", content: "" };
-  messages.push(assistantMessage);
+removeTypingIndicator();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+// Create empty assistant message
+const assistantMessage = {
+  role: "assistant",
+  content: "",
+};
 
-    assistantMessage.content += decoder.decode(value);
-    setCurrentMessages(messages);
-    renderMessages();
-  }
+messages.push(assistantMessage);
 
-  renderChatList();
-  syncCurrentChatToCloud();
+renderMessages();
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+
+  if (done) break;
+
+  const chunk = decoder.decode(value);
+
+  assistantMessage.content += chunk;
+
+  setCurrentMessages(messages);
+
+  renderMessages();
 }
 
-// ====================== CLEAR ======================
+renderChatList();
+
+    await syncCurrentChatToCloud();
+  } catch (error) {
+    console.error(error);
+
+    removeTypingIndicator();
+
+    messages.push({
+      role: "assistant",
+      content:
+        "Error connecting to AI",
+    });
+
+    setCurrentMessages(messages);
+
+    renderMessages();
+    renderChatList();
+
+    await syncCurrentChatToCloud();
+  }
+}
+
+// ====================== CLEAR CHAT ======================
 
 function clearCurrentChat() {
-  if (!currentChatId) return;
+  if (
+    !currentChatId ||
+    !chats[currentChatId]
+  ) {
+    return;
+  }
+
+  if (
+    !confirm(
+      "Clear all messages in this chat?"
+    )
+  ) {
+    return;
+  }
 
   chats[currentChatId].messages = [];
-  saveLocal();
+  chats[currentChatId].updated_at =
+    new Date().toISOString();
 
+  saveLocal();
   renderMessages();
   renderChatList();
   syncCurrentChatToCloud();
@@ -348,36 +540,156 @@ function clearCurrentChat() {
 
 // ====================== AUTH ======================
 
-async function checkUser() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
+signupBtn.addEventListener(
+  "click",
+  async function () {
+    const email =
+      emailInput.value.trim();
+    const password =
+      passwordInput.value.trim();
 
-  if (session) {
-    authModal.style.display = "none";
+    if (!email || !password) {
+      alert(
+        "Enter email and password"
+      );
+      return;
+    }
+
+    const { error } =
+      await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert(
+      "Signup successful! You can now log in."
+    );
+  }
+);
+
+loginBtn.addEventListener(
+  "click",
+  async function () {
+    const email =
+      emailInput.value.trim();
+    const password =
+      passwordInput.value.trim();
+
+    if (!email || !password) {
+      alert(
+        "Enter email and password"
+      );
+      return;
+    }
+
+    const { error } =
+      await supabaseClient.auth.signInWithPassword(
+        {
+          email: email,
+          password: password,
+        }
+      );
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    authModal.style.display =
+      "none";
 
     await loadChatsFromCloud();
-    startRealtimeSync(session);
 
-    if (!currentChatId) createNewChat();
+    if (!currentChatId) {
+      createNewChat();
+    }
+
+    renderChatList();
+    renderMessages();
+  }
+);
+
+async function checkUser() {
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+
+  if (session) {
+    authModal.style.display =
+      "none";
+
+    await loadChatsFromCloud();
+
+    if (!currentChatId) {
+      createNewChat();
+    }
   } else {
-    authModal.style.display = "flex";
+    authModal.style.display =
+      "flex";
   }
 
   renderChatList();
   renderMessages();
 }
 
-// ====================== EVENTS ======================
+async function logout() {
+  const { error } =
+    await supabaseClient.auth.signOut();
 
-sendBtn?.addEventListener("click", sendMessage);
-userInput?.addEventListener("keydown", e => e.key === "Enter" && sendMessage());
-clearBtn?.addEventListener("click", clearCurrentChat);
-newChatBtn?.addEventListener("click", createNewChat);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-logoutBtn?.addEventListener("click", async () => {
-  await supabaseClient.auth.signOut();
   location.reload();
-});
+}
 
-// ====================== INIT ======================
+// ====================== EVENT LISTENERS ======================
+
+if (sendBtn) {
+  sendBtn.addEventListener(
+    "click",
+    sendMessage
+  );
+}
+
+if (userInput) {
+  userInput.addEventListener(
+    "keydown",
+    function (e) {
+      if (e.key === "Enter") {
+        sendMessage();
+      }
+    }
+  );
+}
+
+if (clearBtn) {
+  clearBtn.addEventListener(
+    "click",
+    clearCurrentChat
+  );
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener(
+    "click",
+    logout
+  );
+}
+
+if (newChatBtn) {
+  newChatBtn.addEventListener(
+    "click",
+    createNewChat
+  );
+}
+
+// ====================== INITIALIZE ======================
 
 checkUser();
