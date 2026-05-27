@@ -12,7 +12,7 @@ const supabaseClient = supabase.createClient(
 
 // Sidebar
 const sidebar = document.getElementById("sidebar");
-const sidebarToggle = document.getElementById("sidebarToggle");
+const sidebarToggle = document.getElementById("menuBtn");
 const newChatBtn = document.getElementById("newChatBtn");
 const chatList = document.getElementById("chatList");
 
