@@ -11,8 +11,9 @@ const supabaseClient = supabase.createClient(
 // ====================== ELEMENTS ======================
 
 // Sidebar
-const sidebar = document.getElementById("sidebar",
-const sidebarToggle =document.getElementById("sidebarToggle");                                 
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle =
+  document.getElementById("sidebarToggle");
 const newChatBtn = document.getElementById("newChatBtn");
 const chatList = document.getElementById("chatList");
 
@@ -487,8 +488,6 @@ while (true) {
 }
 
 renderChatList();
-
-await syncCurrentChatToCloud();
 
     await syncCurrentChatToCloud();
   } catch (error) {
