@@ -33,9 +33,9 @@ const authModal = document.getElementById("authModal");
 
 // ====================== STATE ======================
 
-let chats = JSON.parse(localStorage.getItem("omega_chats_v2")) || {};
+let chats = JSON.parse(sessionStorage.getItem("omega_chats_v2")) || {};
 let currentChatId =
-  localStorage.getItem("omega_current_chat") || null;
+  sessionStorage.getItem("omega_current_chat") || null;
 
 // ====================== HELPERS ======================
 
@@ -47,11 +47,12 @@ function generateId() {
 }
 
 function saveLocal() {
-  localStorage.setItem(
+  sessionStorage.setItem(
     "omega_chats_v2",
     JSON.stringify(chats)
   );
-  localStorage.setItem(
+
+  sessionStorage.setItem(
     "omega_current_chat",
     currentChatId || ""
   );
@@ -160,50 +161,38 @@ async function deleteChat(chatId) {
   if (!confirm("Delete this chat?")) return;
 
   try {
-    // Get logged in user
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
+    const { data: { session } } =
+      await supabaseClient.auth.getSession();
 
-    // Delete from Supabase cloud database
+    // 1. DELETE FROM SUPABASE (permanent)
     if (session) {
-      const { error } = await supabaseClient
+      await supabaseClient
         .from("chats")
         .delete()
         .eq("id", chatId)
         .eq("user_id", session.user.id);
-
-      if (error) {
-        console.error("Cloud delete error:", error);
-      }
     }
 
-    // Delete locally
+    // 2. DELETE FROM LOCAL MEMORY
     delete chats[chatId];
 
-    // Fix current selected chat
+    // 3. FIX CURRENT CHAT POINTER
     if (currentChatId === chatId) {
-      const remainingChats = Object.keys(chats);
-
-      currentChatId =
-        remainingChats.length > 0
-          ? remainingChats[0]
-          : null;
+      const remaining = Object.keys(chats);
+      currentChatId = remaining.length ? remaining[0] : null;
     }
 
-    // Save local changes
+    // 4. SAVE LOCAL STORAGE (IMPORTANT)
     saveLocal();
 
-    // Re-render UI
+    // 5. UPDATE UI
     renderChatList();
     renderMessages();
 
-    // Create new chat if empty
-    if (!currentChatId) {
-      createNewChat();
-    }
+    if (!currentChatId) createNewChat();
+
   } catch (error) {
-    console.error("Delete chat error:", error);
+    console.error("Delete error:", error);
   }
 }
 
@@ -367,45 +356,48 @@ async function syncCurrentChatToCloud() {
 
 async function loadChatsFromCloud() {
   try {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
+    const { data: { session } } =
+      await supabaseClient.auth.getSession();
 
     if (!session) return;
 
     const { data, error } = await supabaseClient
       .from("chats")
       .select("*")
-      .order("updated_at", {
-        ascending: false,
-      });
+      .eq("user_id", session.user.id);
 
     if (error) {
       console.error(error);
       return;
     }
 
-    if (data && data.length > 0) {
-      data.forEach(function (chat) {
-        chats[chat.id] = {
-          id: chat.id,
-          title: chat.title,
-          messages: chat.messages || [],
-          created_at:
-            chat.created_at ||
-            new Date().toISOString(),
-          updated_at:
-            chat.updated_at ||
-            new Date().toISOString(),
-        };
-      });
+    const cloudChats = {};
 
-      if (!currentChatId) {
-        currentChatId = data[0].id;
-      }
+    data.forEach(chat => {
+      // SKIP ANY DELETED CHAT
+      if (chat.deleted) return;
 
-      saveLocal();
-    }
+      cloudChats[chat.id] = {
+        id: chat.id,
+        title: chat.title,
+        messages: chat.messages || [],
+        created_at: chat.created_at,
+        updated_at: chat.updated_at
+      };
+    });
+
+    // REPLACE local chats with cloud chats
+chats = cloudChats;
+
+// Fix invalid current chat
+if (!chats[currentChatId]) {
+  currentChatId = Object.keys(chats)[0] || null;
+}
+
+    saveLocal();
+    renderChatList();
+    renderMessages();
+
   } catch (error) {
     console.error("Load chats error:", error);
   }
@@ -458,6 +450,10 @@ async function sendMessage() {
   }),
 });
 
+if (!response.ok) {
+  throw new Error("Failed to get AI response");
+}
+
 removeTypingIndicator();
 
 // Create empty assistant message
@@ -469,6 +465,10 @@ const assistantMessage = {
 messages.push(assistantMessage);
 
 renderMessages();
+
+if (!response.body) {
+  throw new Error("No response body");
+}
 
 const reader = response.body.getReader();
 const decoder = new TextDecoder();
@@ -662,9 +662,10 @@ if (userInput) {
   userInput.addEventListener(
     "keydown",
     function (e) {
-      if (e.key === "Enter") {
-        sendMessage();
-      }
+      if (e.key === "Enter" && !e.shiftKey) {
+  e.preventDefault();
+  sendMessage();
+}
     }
   );
 }
