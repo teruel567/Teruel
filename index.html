@@ -6,6 +6,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
+
   <title>Omega AI Assistant</title>
 
   <!-- PWA -->
@@ -16,18 +17,17 @@
   <link rel="stylesheet" href="style.css" />
 
   <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- Marked.js for Markdown rendering -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-<!-- Highlight.js for syntax highlighting -->
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css"
-/>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- DOMPurify -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 </head>
+
 <body>
 
   <!-- ================= HEADER ================= -->
@@ -36,11 +36,10 @@
       <button id="sidebarToggle" class="menu-btn">☰</button>
 
       <div>
-        <h1>My chartbot</h1>
+        <h1>My chatbot</h1>
         <p>Ask me anything</p>
       </div>
     </div>
-
   </header>
 
   <!-- ================= MAIN APP ================= -->
@@ -51,12 +50,22 @@
 
       <div class="sidebar-header">
         <h2>Chats</h2>
-        <button id="newChatBtn" class="new-chat-btn">+ New</button>
+
+        <button
+          id="newChatBtn"
+          class="new-chat-btn"
+        >
+          + New
+        </button>
       </div>
 
-      <div id="chatList" class="chat-list">
+      <div
+        id="chatList"
+        class="chat-list"
+      >
         <!-- Chat sessions will appear here -->
       </div>
+
     </aside>
 
     <!-- ========== MAIN CHAT AREA ========== -->
@@ -64,16 +73,27 @@
 
       <!-- Chat Header -->
       <div class="chat-header">
-        <h2 id="chatTitle">Omega AI Assistant</h2>
+
+        <h2 id="chatTitle">
+          Omega AI Assistant
+        </h2>
 
         <div class="chat-actions">
-          <button id="clearBtn" class="action-btn">
+
+          <button
+            id="clearBtn"
+            class="action-btn"
+          >
             Clear
           </button>
 
-          <button id="logoutBtn" class="logout-btn">
+          <button
+            id="logoutBtn"
+            class="logout-btn"
+          >
             Logout
           </button>
+
         </div>
       </div>
 
@@ -85,6 +105,7 @@
 
       <!-- Input Area -->
       <div class="input-container">
+
         <input
           type="text"
           id="userInput"
@@ -92,7 +113,10 @@
           autocomplete="off"
         />
 
-        <button id="sendBtn">Send</button>
+        <button id="sendBtn">
+          Send
+        </button>
+
       </div>
 
     </main>
@@ -100,7 +124,9 @@
 
   <!-- ================= AUTH MODAL ================= -->
   <div id="authModal" class="modal">
+
     <div class="modal-content">
+
       <h2>Welcome</h2>
 
       <input
@@ -122,10 +148,11 @@
       <button id="signupBtn">
         Sign Up
       </button>
+
     </div>
   </div>
 
-  <!-- ================= SCRIPT ================= -->
+  <!-- ================= MAIN SCRIPT ================= -->
   <script src="script.js"></script>
 
   <!-- ================= SERVICE WORKER ================= -->
@@ -138,4 +165,4 @@
   </script>
 
 </body>
-  </html>
+          </html>
