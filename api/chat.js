@@ -121,4 +121,4 @@ export default async function handler(req, res) {
     console.error("Groq Streaming Error:", error);
     res.status(500).end("Server Error");
   }
-        }
+}
