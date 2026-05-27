@@ -155,23 +155,54 @@ function renameChat(chatId) {
   syncCurrentChatToCloud();
 }
 
-function deleteChat(chatId) {
+async function deleteChat(chatId) {
   if (!confirm("Delete this chat?")) return;
 
-  delete chats[chatId];
+  try {
+    // Get logged in user
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
 
-  if (currentChatId === chatId) {
-    const remaining = Object.keys(chats);
-    currentChatId =
-      remaining.length > 0 ? remaining[0] : null;
-  }
+    // Delete from Supabase cloud database
+    if (session) {
+      const { error } = await supabaseClient
+        .from("chats")
+        .delete()
+        .eq("id", chatId)
+        .eq("user_id", session.user.id);
 
-  saveLocal();
-  renderChatList();
-  renderMessages();
+      if (error) {
+        console.error("Cloud delete error:", error);
+      }
+    }
 
-  if (!currentChatId) {
-    createNewChat();
+    // Delete locally
+    delete chats[chatId];
+
+    // Fix current selected chat
+    if (currentChatId === chatId) {
+      const remainingChats = Object.keys(chats);
+
+      currentChatId =
+        remainingChats.length > 0
+          ? remainingChats[0]
+          : null;
+    }
+
+    // Save local changes
+    saveLocal();
+
+    // Re-render UI
+    renderChatList();
+    renderMessages();
+
+    // Create new chat if empty
+    if (!currentChatId) {
+      createNewChat();
+    }
+  } catch (error) {
+    console.error("Delete chat error:", error);
   }
 }
 
@@ -380,6 +411,7 @@ async function loadChatsFromCloud() {
 }
 
 // ====================== SEND MESSAGE ======================
+
 async function sendMessage() {
   const text = userInput.value.trim();
 
@@ -391,7 +423,6 @@ async function sendMessage() {
 
   const messages = getCurrentMessages();
 
-  // Add user message
   messages.push({
     role: "user",
     content: text,
@@ -407,20 +438,13 @@ async function sendMessage() {
   }
 
   setCurrentMessages(messages);
+
   renderChatList();
   renderMessages();
 
   userInput.value = "";
 
-  // Create empty assistant message
-  const assistantMessage = {
-    role: "assistant",
-    content: "",
-  };
-
-  messages.push(assistantMessage);
-  setCurrentMessages(messages);
-  renderMessages();
+  showTypingIndicator();
 
   try {
     const response = await fetch("/api/chat", {
@@ -434,50 +458,42 @@ async function sendMessage() {
       }),
     });
 
-    if (!response.ok || !response.body) {
-      throw new Error("Streaming failed");
-    }
+    const data = await response.json();
 
-    const reader =
-      response.body.getReader();
-    const decoder = new TextDecoder();
+    removeTypingIndicator();
 
-    let fullReply = "";
+    messages.push({
+      role: "assistant",
+      content:
+        data.reply || "No response",
+    });
 
-    while (true) {
-      const { value, done } =
-        await reader.read();
+    setCurrentMessages(messages);
 
-      if (done) break;
-
-      const chunk = decoder.decode(
-        value,
-        {
-          stream: true,
-        }
-      );
-
-      fullReply += chunk;
-      assistantMessage.content =
-        fullReply;
-
-      setCurrentMessages(messages);
-      renderMessages();
-    }
+    renderMessages();
+    renderChatList();
 
     await syncCurrentChatToCloud();
   } catch (error) {
     console.error(error);
 
-    assistantMessage.content =
-      "Error connecting to AI";
+    removeTypingIndicator();
+
+    messages.push({
+      role: "assistant",
+      content:
+        "Error connecting to AI",
+    });
 
     setCurrentMessages(messages);
+
     renderMessages();
+    renderChatList();
 
     await syncCurrentChatToCloud();
   }
-            }
+}
+
 // ====================== CLEAR CHAT ======================
 
 function clearCurrentChat() {
