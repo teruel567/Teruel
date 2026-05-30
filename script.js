@@ -448,7 +448,7 @@ text.substring(0, 30) + (text.length > 30 ? "..." : "");
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    message: text,
+    messages: getCurrentMessages(),
   }),
 });
 
