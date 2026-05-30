@@ -4,11 +4,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body;
+    const { messages } = req.body;
 
-    if (!message) {
-      return res.status(400).end("No message provided");
-    }
+if (
+  !messages ||
+  !Array.isArray(messages) ||
+  messages.length === 0
+) {
+  return res.status(400).end("No messages provided");
+}
 
     const apiKey = process.env.GROQ_API_KEY;
 
@@ -32,16 +36,26 @@ export default async function handler(req, res) {
           temperature: 0.7,
           max_tokens: 2048,
           messages: [
-            {
-              role: "system",
-              content:
-                "You are Omega AI Assistant, an advanced chatbot that helps with coding, cybersecurity, education, and general questions.",
-            },
-            {
-              role: "user",
-              content: message,
-            },
-          ],
+  {
+    role: "system",
+    content:
+      `You are Omega AI Assistant.
+
+You are an advanced AI assistant specialized in:
+- Coding
+- Cybersecurity
+- Education
+- Research
+- Business assistance
+
+Remember information from the conversation and answer based on previous messages whenever relevant.
+
+Use markdown formatting when helpful.
+Provide accurate and detailed responses.`,
+  },
+
+  ...messages.slice(-20),
+],
         }),
       }
     );
@@ -121,4 +135,4 @@ export default async function handler(req, res) {
     console.error("Groq Streaming Error:", error);
     res.status(500).end("Server Error");
   }
-}
+            }
