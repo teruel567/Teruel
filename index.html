@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
+<meta name="description" content="Omega AI Assistant" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="logo.png" />
   <title>Omega AI Assistant</title>
 
   <!-- PWA -->
@@ -15,6 +13,11 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
+  
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+/>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -155,14 +158,7 @@
   <!-- ================= MAIN SCRIPT ================= -->
   <script src="script.js"></script>
 
-  <!-- ================= SERVICE WORKER ================= -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("service-worker.js")
-        .catch(console.error);
-    }
-  </script>
+
 
 </body>
-    </html>
+  </html>
