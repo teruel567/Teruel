@@ -45,9 +45,6 @@ function generateId() {
   );
 }
 
-function saveLocal() {
-  // No local storage
-}
 
 function getCurrentMessages() {
   if (!currentChatId || !chats[currentChatId]) return [];
