@@ -33,9 +33,8 @@ const authModal = document.getElementById("authModal");
 
 // ====================== STATE ======================
 
-let chats = JSON.parse(sessionStorage.getItem("omega_chats_v2")) || {};
-let currentChatId =
-  sessionStorage.getItem("omega_current_chat") || null;
+let chats = {};
+let currentChatId = null;
 
 // ====================== HELPERS ======================
 
@@ -47,15 +46,7 @@ function generateId() {
 }
 
 function saveLocal() {
-  sessionStorage.setItem(
-    "omega_chats_v2",
-    JSON.stringify(chats)
-  );
-
-  sessionStorage.setItem(
-    "omega_current_chat",
-    currentChatId || ""
-  );
+  // No local storage
 }
 
 function getCurrentMessages() {
@@ -70,7 +61,6 @@ function setCurrentMessages(messages) {
   chats[currentChatId].updated_at =
     new Date().toISOString();
 
-  saveLocal();
 }
 
 function escapeHtml(text) {
@@ -118,7 +108,6 @@ function createNewChat() {
 
   currentChatId = id;
 
-  saveLocal();
   renderChatList();
   renderMessages();
   syncCurrentChatToCloud();
@@ -132,7 +121,6 @@ function createNewChat() {
 function selectChat(chatId) {
   currentChatId = chatId;
 
-  saveLocal();
   renderChatList();
   renderMessages();
 
@@ -152,44 +140,53 @@ function renameChat(chatId) {
   chats[chatId].updated_at =
     new Date().toISOString();
 
-  saveLocal();
   renderChatList();
   syncCurrentChatToCloud();
 }
-
 async function deleteChat(chatId) {
   if (!confirm("Delete this chat?")) return;
 
   try {
-    const { data: { session } } =
-      await supabaseClient.auth.getSession();
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
 
-    // 1. DELETE FROM SUPABASE (permanent)
+    // DELETE FROM SUPABASE
     if (session) {
-      await supabaseClient
+      const { error } = await supabaseClient
         .from("chats")
         .delete()
         .eq("id", chatId)
         .eq("user_id", session.user.id);
+
+      if (error) {
+        console.error(error);
+        alert("Failed to delete chat");
+        return;
+      }
     }
 
-    // 2. DELETE FROM LOCAL MEMORY
+    // DELETE FROM LOCAL MEMORY
     delete chats[chatId];
 
-    // 3. FIX CURRENT CHAT POINTER
+    // FIX CURRENT CHAT
     if (currentChatId === chatId) {
       const remaining = Object.keys(chats);
-      currentChatId = remaining.length ? remaining[0] : null;
+
+      currentChatId =
+        remaining.length > 0
+          ? remaining[0]
+          : null;
     }
 
-    // 4. SAVE LOCAL STORAGE (IMPORTANT)
-    saveLocal();
-
-    // 5. UPDATE UI
+    // UPDATE UI
     renderChatList();
     renderMessages();
 
-    if (!currentChatId) createNewChat();
+    // CREATE NEW CHAT IF NONE LEFT
+    if (!currentChatId) {
+      createNewChat();
+    }
 
   } catch (error) {
     console.error("Delete error:", error);
@@ -262,7 +259,9 @@ function renderMessages() {
 
     if (msg.role === "assistant") {
       // Render markdown
-      div.innerHTML = marked.parse(msg.content || "");
+      div.innerHTML = DOMPurify.sanitize(
+  marked.parse(msg.content || "")
+);
 
       // Highlight code blocks
       div.querySelectorAll("pre code").forEach((block) => {
@@ -342,13 +341,20 @@ async function syncCurrentChatToCloud() {
 
     const chat = chats[currentChatId];
 
-    await supabaseClient.from("chats").upsert({
-      id: chat.id,
-      user_id: session.user.id,
-      title: chat.title,
-      messages: chat.messages,
-      updated_at: new Date().toISOString(),
-    });
+    const { error } = await supabaseClient
+      .from("chats")
+      .upsert({
+        id: chat.id,
+        user_id: session.user.id,
+        title: chat.title,
+        messages: chat.messages,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error(error);
+    }
+
   } catch (error) {
     console.error("Cloud sync error:", error);
   }
@@ -394,7 +400,6 @@ if (!chats[currentChatId]) {
   currentChatId = Object.keys(chats)[0] || null;
 }
 
-    saveLocal();
     renderChatList();
     renderMessages();
 
@@ -427,7 +432,7 @@ async function sendMessage() {
     messages.length === 1
   ) {
     chats[currentChatId].title =
-      text.substring(0, 30);
+text.substring(0, 30) + (text.length > 30 ? "..." : "");
   }
 
   setCurrentMessages(messages);
@@ -478,9 +483,13 @@ while (true) {
 
   if (done) break;
 
-  const chunk = decoder.decode(value);
+  const chunk = decoder.decode(value, {
+  stream: true,
+});
 
+  if (chunk) {
   assistantMessage.content += chunk;
+}
 
   setCurrentMessages(messages);
 
@@ -532,7 +541,6 @@ function clearCurrentChat() {
   chats[currentChatId].updated_at =
     new Date().toISOString();
 
-  saveLocal();
   renderMessages();
   renderChatList();
   syncCurrentChatToCloud();
@@ -540,79 +548,83 @@ function clearCurrentChat() {
 
 // ====================== AUTH ======================
 
-signupBtn.addEventListener(
-  "click",
-  async function () {
-    const email =
-      emailInput.value.trim();
-    const password =
-      passwordInput.value.trim();
+if (signupBtn) {
+  signupBtn.addEventListener(
+    "click",
+    async function () {
+      const email =
+        emailInput.value.trim();
+      const password =
+        passwordInput.value.trim();
 
-    if (!email || !password) {
-      alert(
-        "Enter email and password"
-      );
-      return;
-    }
+      if (!email || !password) {
+        alert(
+          "Enter email and password"
+        );
+        return;
+      }
 
-    const { error } =
-      await supabaseClient.auth.signUp({
-        email: email,
-        password: password,
-      });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert(
-      "Signup successful! You can now log in."
-    );
-  }
-);
-
-loginBtn.addEventListener(
-  "click",
-  async function () {
-    const email =
-      emailInput.value.trim();
-    const password =
-      passwordInput.value.trim();
-
-    if (!email || !password) {
-      alert(
-        "Enter email and password"
-      );
-      return;
-    }
-
-    const { error } =
-      await supabaseClient.auth.signInWithPassword(
-        {
+      const { error } =
+        await supabaseClient.auth.signUp({
           email: email,
           password: password,
-        }
+        });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      alert(
+        "Signup successful! You can now log in."
       );
-
-    if (error) {
-      alert(error.message);
-      return;
     }
+  );
+}
 
-    authModal.style.display =
-      "none";
+if (loginBtn) {
+  loginBtn.addEventListener(
+    "click",
+    async function () {
+      const email =
+        emailInput.value.trim();
+      const password =
+        passwordInput.value.trim();
 
-    await loadChatsFromCloud();
+      if (!email || !password) {
+        alert(
+          "Enter email and password"
+        );
+        return;
+      }
 
-    if (!currentChatId) {
-      createNewChat();
+      const { error } =
+        await supabaseClient.auth.signInWithPassword(
+          {
+            email: email,
+            password: password,
+          }
+        );
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      authModal.style.display =
+        "none";
+
+      await loadChatsFromCloud();
+
+      if (!currentChatId) {
+        createNewChat();
+      }
+
+      renderChatList();
+      renderMessages();
     }
-
-    renderChatList();
-    renderMessages();
-  }
-);
+  );
+}
 
 async function checkUser() {
   const {
