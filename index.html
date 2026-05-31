@@ -158,7 +158,32 @@
   <!-- ================= MAIN SCRIPT ================= -->
   <script src="script.js"></script>
 
+<div
+  id="chatSheetOverlay"
+  class="chat-sheet-overlay"
+  onclick="closeChatSheet()"
+></div>
 
+<div
+  id="chatSheet"
+  class="chat-sheet"
+>
+  <div class="chat-sheet-handle"></div>
+
+  <div
+    class="chat-sheet-item delete"
+    onclick="deleteSelectedChat()"
+  >
+    🗑 Delete
+  </div>
+
+  <div
+    class="chat-sheet-item"
+    onclick="renameSelectedChat()"
+  >
+    ✏ Rename
+  </div>
+</div>
 
 </body>
   </html>
