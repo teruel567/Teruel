@@ -196,41 +196,96 @@ window.deleteChat = deleteChat;
 
 // ====================== RENDER CHAT LIST ======================
 
+let selectedChatId = null;
+
+function openChatSheet(chatId) {
+  selectedChatId = chatId;
+
+  document
+    .getElementById("chatSheetOverlay")
+    .classList.add("show");
+
+  document
+    .getElementById("chatSheet")
+    .classList.add("show");
+}
+
+function closeChatSheet() {
+  document
+    .getElementById("chatSheetOverlay")
+    .classList.remove("show");
+
+  document
+    .getElementById("chatSheet")
+    .classList.remove("show");
+}
+
+function renameSelectedChat() {
+  closeChatSheet();
+
+  if (selectedChatId) {
+    renameChat(selectedChatId);
+  }
+}
+
+function deleteSelectedChat() {
+  closeChatSheet();
+
+  if (selectedChatId) {
+    deleteChat(selectedChatId);
+  }
+}
+
+window.renameSelectedChat =
+  renameSelectedChat;
+
+window.deleteSelectedChat =
+  deleteSelectedChat;
+
+window.openChatSheet =
+  openChatSheet;
+
+window.closeChatSheet =
+  closeChatSheet;
+
 function renderChatList() {
   if (!chatList) return;
 
   chatList.innerHTML = "";
 
   const sortedChats = Object.values(chats).sort(
-    function (a, b) {
-      return (
-        new Date(b.updated_at) -
-        new Date(a.updated_at)
-      );
-    }
+    (a, b) =>
+      new Date(b.updated_at) -
+      new Date(a.updated_at)
   );
 
-  sortedChats.forEach(function (chat) {
-    const item = document.createElement("div");
+  sortedChats.forEach((chat) => {
+    const item =
+      document.createElement("div");
 
     item.className =
       "chat-item" +
-      (chat.id === currentChatId ? " active" : "");
+      (chat.id === currentChatId
+        ? " active"
+        : "");
 
     item.innerHTML = `
-      <span class="chat-title">${escapeHtml(
-        chat.title
-      )}</span>
-      <div class="chat-actions">
-        <button onclick="renameChat('${chat.id}')">✏️</button>
-        <button onclick="deleteChat('${chat.id}')">🗑️</button>
-      </div>
+      <span class="chat-title">
+        ${escapeHtml(chat.title)}
+      </span>
+
+      <button
+        class="chat-menu-btn"
+        onclick="event.stopPropagation(); openChatSheet('${chat.id}')"
+      >
+        ⋮
+      </button>
     `;
 
-    item.addEventListener("click", function (e) {
-      if (e.target.tagName === "BUTTON") return;
-      selectChat(chat.id);
-    });
+    item.addEventListener(
+      "click",
+      () => selectChat(chat.id)
+    );
 
     chatList.appendChild(item);
   });
