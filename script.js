@@ -107,7 +107,6 @@ function createNewChat() {
 
   renderChatList();
   renderMessages();
-  syncCurrentChatToCloud();
 
   // Close sidebar on mobile
   if (window.innerWidth <= 768 && sidebar) {
@@ -489,12 +488,14 @@ text.substring(0, 30) + (text.length > 30 ? "..." : "");
 
   setCurrentMessages(messages);
 
-  renderChatList();
-  renderMessages();
+renderChatList();
+renderMessages();
 
-  userInput.value = "";
+await syncCurrentChatToCloud();
 
-  showTypingIndicator();
+userInput.value = "";
+
+showTypingIndicator();
 
   try {
     const response = await fetch("/api/chat", {
@@ -557,17 +558,16 @@ renderChatList();
     removeTypingIndicator();
 
     messages.push({
-      role: "assistant",
-      content:
-        "Error connecting to AI",
-    });
+  role: "assistant",
+  content: "Error connecting to AI",
+});
 
-    setCurrentMessages(messages);
+setCurrentMessages(messages);
 
-    renderMessages();
-    renderChatList();
+renderMessages();
+renderChatList();
 
-    await syncCurrentChatToCloud();
+await syncCurrentChatToCloud();
   }
 }
 
@@ -688,7 +688,6 @@ async function checkUser() {
     await loadChatsFromCloud();
 
     createNewChat();
-    }
   } else {
     authModal.style.display =
       "flex";
