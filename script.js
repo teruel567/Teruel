@@ -659,36 +659,32 @@ if (loginBtn) {
       if (error) {
         alert(error.message);
         return;
-      }
-
-      authModal.style.display =
-        "none";
+      authModal.style.display = "none";
 
       await loadChatsFromCloud();
 
-createNewChat();
+      createNewChat();
 
       renderChatList();
       renderMessages();
-    }
-  );
-}
+
+    } // closes async function
+  ); // closes addEventListener
+} // closes if(loginBtn)
+
 
 async function checkUser() {
-  const {
-    async function checkUser() {
   const {
     data: { session },
   } = await supabaseClient.auth.getSession();
 
   if (session) {
-    authModal.style.display = "none";
+    authModal.style.display = "flex";
 
     await loadChatsFromCloud();
 
-    // Start with fresh chat every time
+    // Start with fresh chat
     createNewChat();
-
   } else {
     authModal.style.display = "flex";
   }
