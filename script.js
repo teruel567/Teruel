@@ -668,12 +668,10 @@ if (loginBtn) {
 
       await loadChatsFromCloud();
 
-      if (!currentChatId) {
-        createNewChat();
-      }
+createNewChat();
 
-      renderChatList();
-      renderMessages();
+renderChatList();
+renderMessages();
     }
   );
 }
@@ -689,8 +687,7 @@ async function checkUser() {
 
     await loadChatsFromCloud();
 
-    if (!currentChatId) {
-      createNewChat();
+    createNewChat();
     }
   } else {
     authModal.style.display =
