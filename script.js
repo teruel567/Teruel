@@ -447,8 +447,10 @@ async function loadChatsFromCloud() {
     // REPLACE local chats with cloud chats
 chats = cloudChats;
 
-// Don't automatically open an old chat
-currentChatId = null;
+// Fix invalid current chat
+if (!chats[currentChatId]) {
+  currentChatId = Object.keys(chats)[0] || null;
+}
 
     renderChatList();
     renderMessages();
@@ -659,19 +661,22 @@ if (loginBtn) {
       if (error) {
         alert(error.message);
         return;
-      authModal.style.display = "none";
+      }
+
+      authModal.style.display =
+        "none";
 
       await loadChatsFromCloud();
 
-      createNewChat();
+      if (!currentChatId) {
+        createNewChat();
+      }
 
       renderChatList();
       renderMessages();
-
-    } // closes async function
-  ); // closes addEventListener
-} // closes if(loginBtn)
-
+    }
+  );
+}
 
 async function checkUser() {
   const {
@@ -679,14 +684,17 @@ async function checkUser() {
   } = await supabaseClient.auth.getSession();
 
   if (session) {
-    authModal.style.display = "flex";
+    authModal.style.display =
+      "none";
 
     await loadChatsFromCloud();
 
-    // Start with fresh chat
-    createNewChat();
+    if (!currentChatId) {
+      createNewChat();
+    }
   } else {
-    authModal.style.display = "flex";
+    authModal.style.display =
+      "flex";
   }
 
   renderChatList();
