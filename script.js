@@ -684,15 +684,21 @@ async function checkUser() {
   } = await supabaseClient.auth.getSession();
 
   if (session) {
-    authModal.style.display =
-      "none";
+  authModal.style.display = "none";
 
-    await loadChatsFromCloud();
+  await loadChatsFromCloud();
 
-    if (!currentChatId) {
-      createNewChat();
-    }
-  } else {
+  const current =
+    currentChatId &&
+    chats[currentChatId];
+
+  if (
+    !current ||
+    current.messages.length > 0
+  ) {
+    createNewChat();
+  }
+} else {
     authModal.style.display =
       "flex";
   }
