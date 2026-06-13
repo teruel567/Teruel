@@ -447,9 +447,8 @@ async function loadChatsFromCloud() {
     // REPLACE local chats with cloud chats
 chats = cloudChats;
 
-// Fix invalid current chat
-if (!chats[currentChatId]) {
-  currentChatId = Object.keys(chats)[0] || null;
+// Don't automatically open an old chat
+currentChatId = null;
 }
 
     renderChatList();
@@ -668,8 +667,7 @@ if (loginBtn) {
 
       await loadChatsFromCloud();
 
-      if (!currentChatId) {
-        createNewChat();
+createNewChat();
       }
 
       renderChatList();
