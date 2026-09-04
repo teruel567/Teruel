@@ -8,12 +8,12 @@ const supabaseClient = supabase.createClient(
   SUPABASE_ANON_KEY
 );
 
+
 // ====================== ELEMENTS ======================
 
 // Sidebar
 const sidebar = document.getElementById("sidebar");
-const sidebarToggle =
-  document.getElementById("sidebarToggle");
+const sidebarToggle = document.getElementById("sidebarToggle");
 const newChatBtn = document.getElementById("newChatBtn");
 const chatList = document.getElementById("chatList");
 
@@ -22,19 +22,14 @@ const chatBox = document.getElementById("chatContainer");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
-const logoutBtn = document.getElementById("logoutBtn");
 
-// Auth
-const loginBtn = document.getElementById("loginBtn");
-const signupBtn = document.getElementById("signupBtn");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const authModal = document.getElementById("authModal");
 
 // ====================== STATE ======================
 
 let chats = {};
 let currentChatId = null;
+let selectedChatId = null;
+
 
 // ====================== HELPERS ======================
 
@@ -47,18 +42,24 @@ function generateId() {
 
 
 function getCurrentMessages() {
-  if (!currentChatId || !chats[currentChatId]) return [];
+  if (!currentChatId || !chats[currentChatId]) {
+    return [];
+  }
+
   return chats[currentChatId].messages;
 }
 
+
 function setCurrentMessages(messages) {
-  if (!currentChatId || !chats[currentChatId]) return;
+  if (!currentChatId || !chats[currentChatId]) {
+    return;
+  }
 
   chats[currentChatId].messages = messages;
   chats[currentChatId].updated_at =
     new Date().toISOString();
-
 }
+
 
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -66,174 +67,381 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ====================== SIDEBAR TOGGLE ======================
-// Fixed version: safely checks if elements exist
 
-if (sidebarToggle && sidebar) {
-  sidebarToggle.addEventListener("click", function (e) {
-    e.stopPropagation();
-    sidebar.classList.toggle("open");
-  });
+// ====================== SUPABASE USER ======================
+
+async function getSupabaseUserId() {
+  try {
+    const {
+      data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    return session?.user?.id || null;
+
+  } catch (error) {
+    console.error("Get Supabase user error:", error);
+    return null;
+  }
 }
 
-// Close sidebar when tapping outside on mobile
-document.addEventListener("click", function (e) {
-  if (
-    window.innerWidth <= 768 &&
-    sidebar &&
-    sidebar.classList.contains("open") &&
-    !sidebar.contains(e.target) &&
-    sidebarToggle &&
-    !sidebarToggle.contains(e.target)
-  ) {
-    sidebar.classList.remove("open");
+
+// ====================== ANONYMOUS LOGIN ======================
+
+async function ensureAnonymousSession() {
+
+  const existingUserId = await getSupabaseUserId();
+
+  if (existingUserId) {
+    return existingUserId;
   }
-});
+
+  const {
+    data,
+    error
+  } = await supabaseClient.auth.signInAnonymously();
+
+  if (error) {
+    console.error(
+      "Anonymous sign-in error:",
+      error
+    );
+
+    throw error;
+  }
+
+  return data?.user?.id || null;
+}
+
+
+// ====================== SIDEBAR TOGGLE ======================
+
+if (sidebarToggle && sidebar) {
+
+  sidebarToggle.addEventListener(
+    "click",
+    function (e) {
+
+      e.stopPropagation();
+
+      sidebar.classList.toggle("open");
+    }
+  );
+
+}
+
+
+// Close sidebar when tapping outside on mobile
+
+document.addEventListener(
+  "click",
+  function (e) {
+
+    if (
+      window.innerWidth <= 768 &&
+      sidebar &&
+      sidebar.classList.contains("open") &&
+      !sidebar.contains(e.target) &&
+      sidebarToggle &&
+      !sidebarToggle.contains(e.target)
+    ) {
+
+      sidebar.classList.remove("open");
+
+    }
+
+  }
+);
+
 
 // ====================== CHAT MANAGEMENT ======================
 
 function createNewChat() {
+
   const id = generateId();
 
+  const now = new Date().toISOString();
+
   chats[id] = {
+
     id: id,
+
     title: "New Chat",
+
     messages: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+
+    created_at: now,
+
+    updated_at: now
+
   };
 
   currentChatId = id;
 
   renderChatList();
+
   renderMessages();
 
+
   // Close sidebar on mobile
-  if (window.innerWidth <= 768 && sidebar) {
+
+  if (
+    window.innerWidth <= 768 &&
+    sidebar
+  ) {
+
     sidebar.classList.remove("open");
+
   }
+
 }
 
+
 function selectChat(chatId) {
+
+  if (!chats[chatId]) {
+    return;
+  }
+
   currentChatId = chatId;
 
   renderChatList();
+
   renderMessages();
 
+
   // Close sidebar on mobile
-  if (window.innerWidth <= 768 && sidebar) {
+
+  if (
+    window.innerWidth <= 768 &&
+    sidebar
+  ) {
+
     sidebar.classList.remove("open");
+
   }
+
 }
 
+
 function renameChat(chatId) {
-  const currentTitle = chats[chatId].title;
-  const newTitle = prompt("Rename chat:", currentTitle);
 
-  if (!newTitle || !newTitle.trim()) return;
+  if (!chats[chatId]) {
+    return;
+  }
 
-  chats[chatId].title = newTitle.trim();
+  const currentTitle =
+    chats[chatId].title;
+
+  const newTitle =
+    prompt(
+      "Rename chat:",
+      currentTitle
+    );
+
+  if (
+    !newTitle ||
+    !newTitle.trim()
+  ) {
+
+    return;
+
+  }
+
+  chats[chatId].title =
+    newTitle.trim();
+
   chats[chatId].updated_at =
     new Date().toISOString();
 
   renderChatList();
-  syncCurrentChatToCloud();
+
+  syncChatToCloud(chatId);
+
 }
+
+
 async function deleteChat(chatId) {
-  if (!confirm("Delete this chat?")) return;
+
+  if (!chats[chatId]) {
+    return;
+  }
+
+  if (!confirm("Delete this chat?")) {
+    return;
+  }
 
   try {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
+
+    const userId =
+      await getSupabaseUserId();
+
 
     // DELETE FROM SUPABASE
-    if (session) {
-      const { error } = await supabaseClient
+
+    if (userId) {
+
+      const {
+        error
+      } = await supabaseClient
         .from("chats")
         .delete()
         .eq("id", chatId)
-        .eq("user_id", session.user.id);
+        .eq("user_id", userId);
 
       if (error) {
-        console.error(error);
-        alert("Failed to delete chat");
+
+        console.error(
+          "Supabase delete error:",
+          error
+        );
+
+        alert(
+          "Failed to delete chat"
+        );
+
         return;
       }
+
     }
 
+
     // DELETE FROM LOCAL MEMORY
+
     delete chats[chatId];
 
+
     // FIX CURRENT CHAT
-    if (currentChatId === chatId) {
-      const remaining = Object.keys(chats);
+
+    if (
+      currentChatId === chatId
+    ) {
+
+      const remaining =
+        Object.keys(chats);
 
       currentChatId =
         remaining.length > 0
           ? remaining[0]
           : null;
+
     }
 
+
     // UPDATE UI
+
     renderChatList();
+
     renderMessages();
 
+
     // CREATE NEW CHAT IF NONE LEFT
+
     if (!currentChatId) {
+
       createNewChat();
+
     }
 
   } catch (error) {
-    console.error("Delete error:", error);
+
+    console.error(
+      "Delete error:",
+      error
+    );
+
   }
+
 }
+
 
 // Make functions available globally
-window.renameChat = renameChat;
-window.deleteChat = deleteChat;
 
-// ====================== RENDER CHAT LIST ======================
+window.renameChat =
+  renameChat;
 
-let selectedChatId = null;
+window.deleteChat =
+  deleteChat;
+
+
+// ====================== CHAT SHEET ======================
 
 function openChatSheet(chatId) {
+
   selectedChatId = chatId;
 
-  document
-    .getElementById("chatSheetOverlay")
-    .classList.add("show");
+  const overlay =
+    document.getElementById(
+      "chatSheetOverlay"
+    );
 
-  document
-    .getElementById("chatSheet")
-    .classList.add("show");
+  const sheet =
+    document.getElementById(
+      "chatSheet"
+    );
+
+  if (overlay) {
+    overlay.classList.add("show");
+  }
+
+  if (sheet) {
+    sheet.classList.add("show");
+  }
+
 }
+
 
 function closeChatSheet() {
-  document
-    .getElementById("chatSheetOverlay")
-    .classList.remove("show");
 
-  document
-    .getElementById("chatSheet")
-    .classList.remove("show");
+  const overlay =
+    document.getElementById(
+      "chatSheetOverlay"
+    );
+
+  const sheet =
+    document.getElementById(
+      "chatSheet"
+    );
+
+  if (overlay) {
+    overlay.classList.remove("show");
+  }
+
+  if (sheet) {
+    sheet.classList.remove("show");
+  }
+
 }
+
 
 function renameSelectedChat() {
+
   closeChatSheet();
 
   if (selectedChatId) {
-    renameChat(selectedChatId);
+
+    renameChat(
+      selectedChatId
+    );
+
   }
+
 }
+
 
 function deleteSelectedChat() {
+
   closeChatSheet();
 
   if (selectedChatId) {
-    deleteChat(selectedChatId);
+
+    deleteChat(
+      selectedChatId
+    );
+
   }
+
 }
+
 
 window.renameSelectedChat =
   renameSelectedChat;
@@ -247,510 +455,899 @@ window.openChatSheet =
 window.closeChatSheet =
   closeChatSheet;
 
+
+// ====================== RENDER CHAT LIST ======================
+
 function renderChatList() {
-  if (!chatList) return;
 
-  chatList.innerHTML = "";
-
-  const sortedChats = Object.values(chats).sort(
-    (a, b) =>
-      new Date(b.updated_at) -
-      new Date(a.updated_at)
-  );
-
-  sortedChats.forEach((chat) => {
-    const item =
-      document.createElement("div");
-
-    item.className =
-      "chat-item" +
-      (chat.id === currentChatId
-        ? " active"
-        : "");
-
-    item.innerHTML = `
-      <span class="chat-title">
-        ${escapeHtml(chat.title)}
-      </span>
-
-      <button
-        class="chat-menu-btn"
-        onclick="event.stopPropagation(); openChatSheet('${chat.id}')"
-      >
-        ⋮
-      </button>
-    `;
-
-    item.addEventListener(
-      "click",
-      () => selectChat(chat.id)
-    );
-
-    chatList.appendChild(item);
-  });
-}
-
-// ====================== RENDER MESSAGES ======================
-function renderMessages() {
-  if (!chatBox) return;
-
-  chatBox.innerHTML = "";
-
-  if (!currentChatId || !chats[currentChatId]) {
+  if (!chatList) {
     return;
   }
 
-  const messages = chats[currentChatId].messages;
+  chatList.innerHTML = "";
 
-  messages.forEach((msg) => {
-    const div = document.createElement("div");
-    div.className =
-      "msg " +
-      (msg.role === "user" ? "user" : "bot");
 
-    if (msg.role === "assistant") {
-      // Render markdown
-      div.innerHTML = DOMPurify.sanitize(
-  marked.parse(msg.content || "")
-);
+  const sortedChats =
+    Object.values(chats).sort(
+      (a, b) =>
+        new Date(b.updated_at) -
+        new Date(a.updated_at)
+    );
 
-      // Highlight code blocks
-      div.querySelectorAll("pre code").forEach((block) => {
-        hljs.highlightElement(block);
 
-        // Create copy button
-        const copyBtn = document.createElement("button");
-        copyBtn.className = "copy-code-btn";
-        copyBtn.textContent = "Copy";
+  sortedChats.forEach(
+    (chat) => {
 
-        copyBtn.addEventListener("click", async () => {
-          const code = block.textContent;
+      const item =
+        document.createElement(
+          "div"
+        );
 
-          try {
-            await navigator.clipboard.writeText(code);
-            copyBtn.textContent = "Copied!";
-            setTimeout(() => {
-              copyBtn.textContent = "Copy";
-            }, 2000);
-          } catch (err) {
-            alert("Failed to copy code");
-          }
-        });
+      item.className =
+        "chat-item" +
+        (
+          chat.id === currentChatId
+            ? " active"
+            : ""
+        );
 
-        // Wrap pre element so button can be positioned
-        const pre = block.parentElement;
-        pre.style.position = "relative";
-        pre.appendChild(copyBtn);
-      });
-    } else {
-      // User messages remain plain text
-      div.textContent = msg.content;
+
+      item.innerHTML = `
+
+        <span class="chat-title">
+          ${escapeHtml(chat.title)}
+        </span>
+
+        <button
+          class="chat-menu-btn"
+          onclick="event.stopPropagation(); openChatSheet('${chat.id}')"
+        >
+          ⋮
+        </button>
+
+      `;
+
+
+      item.addEventListener(
+        "click",
+        function () {
+
+          selectChat(
+            chat.id
+          );
+
+        }
+      );
+
+
+      chatList.appendChild(
+        item
+      );
+
     }
+  );
 
-    chatBox.appendChild(div);
-  });
-
-  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+
+// ====================== RENDER MESSAGES ======================
+
+function renderMessages() {
+
+  if (!chatBox) {
+    return;
+  }
+
+  chatBox.innerHTML = "";
+
+
+  if (
+    !currentChatId ||
+    !chats[currentChatId]
+  ) {
+
+    return;
+
+  }
+
+
+  const messages =
+    chats[currentChatId].messages;
+
+
+  messages.forEach(
+    (msg) => {
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+
+      div.className =
+        "msg " +
+        (
+          msg.role === "user"
+            ? "user"
+            : "bot"
+        );
+
+
+      if (
+        msg.role === "assistant"
+      ) {
+
+        // Render Markdown
+
+        div.innerHTML =
+          DOMPurify.sanitize(
+            marked.parse(
+              msg.content || ""
+            )
+          );
+
+
+        // Highlight code blocks
+
+        div
+          .querySelectorAll(
+            "pre code"
+          )
+          .forEach(
+            (block) => {
+
+              hljs.highlightElement(
+                block
+              );
+
+
+              // Create copy button
+
+              const copyBtn =
+                document.createElement(
+                  "button"
+                );
+
+              copyBtn.className =
+                "copy-code-btn";
+
+              copyBtn.textContent =
+                "Copy";
+
+
+              copyBtn.addEventListener(
+                "click",
+                async function () {
+
+                  const code =
+                    block.textContent;
+
+
+                  try {
+
+                    await navigator
+                      .clipboard
+                      .writeText(
+                        code
+                      );
+
+                    copyBtn.textContent =
+                      "Copied!";
+
+
+                    setTimeout(
+                      function () {
+
+                        copyBtn.textContent =
+                          "Copy";
+
+                      },
+                      2000
+                    );
+
+                  } catch (err) {
+
+                    alert(
+                      "Failed to copy code"
+                    );
+
+                  }
+
+                }
+              );
+
+
+              // Position copy button
+
+              const pre =
+                block.parentElement;
+
+              if (pre) {
+
+                pre.style.position =
+                  "relative";
+
+                pre.appendChild(
+                  copyBtn
+                );
+
+              }
+
+            }
+          );
+
+      } else {
+
+        // User messages remain plain text
+
+        div.textContent =
+          msg.content;
+
+      }
+
+
+      chatBox.appendChild(
+        div
+      );
+
+    }
+  );
+
+
+  chatBox.scrollTop =
+    chatBox.scrollHeight;
+
+}
 
 
 // ====================== TYPING INDICATOR ======================
 
 function showTypingIndicator() {
-  const div = document.createElement("div");
-  div.className = "msg bot";
-  div.id = "typingIndicator";
-  div.textContent = "Typing...";
 
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  if (!chatBox) {
+    return;
+  }
+
+  const div =
+    document.createElement(
+      "div"
+    );
+
+  div.className =
+    "msg bot";
+
+  div.id =
+    "typingIndicator";
+
+  div.textContent =
+    "Typing...";
+
+
+  chatBox.appendChild(
+    div
+  );
+
+  chatBox.scrollTop =
+    chatBox.scrollHeight;
+
 }
+
 
 function removeTypingIndicator() {
-  const typing =
-    document.getElementById("typingIndicator");
 
-  if (typing) typing.remove();
+  const typing =
+    document.getElementById(
+      "typingIndicator"
+    );
+
+  if (typing) {
+    typing.remove();
+  }
+
 }
+
 
 // ====================== CLOUD SYNC ======================
 
-async function syncCurrentChatToCloud() {
+async function syncChatToCloud(chatId) {
+
   try {
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
+
+    const userId =
+      await getSupabaseUserId();
+
 
     if (
-      !session ||
-      !currentChatId ||
-      !chats[currentChatId]
+      !userId ||
+      !chatId ||
+      !chats[chatId]
     ) {
+
       return;
+
     }
 
-    const chat = chats[currentChatId];
 
-    const { error } = await supabaseClient
+    const chat =
+      chats[chatId];
+
+
+    const {
+      error
+    } = await supabaseClient
       .from("chats")
       .upsert({
+
         id: chat.id,
-        user_id: session.user.id,
+
+        user_id: userId,
+
         title: chat.title,
+
         messages: chat.messages,
-        updated_at: new Date().toISOString(),
+
+        updated_at:
+          new Date().toISOString()
+
       });
 
+
     if (error) {
-      console.error(error);
+
+      console.error(
+        "Cloud sync error:",
+        error
+      );
+
     }
 
   } catch (error) {
-    console.error("Cloud sync error:", error);
+
+    console.error(
+      "Cloud sync error:",
+      error
+    );
+
   }
+
 }
 
+
+async function syncCurrentChatToCloud() {
+
+  if (!currentChatId) {
+    return;
+  }
+
+  await syncChatToCloud(
+    currentChatId
+  );
+
+}
+
+
+// ====================== LOAD CLOUD CHATS ======================
+
 async function loadChatsFromCloud() {
+
   try {
-    const { data: { session } } =
-      await supabaseClient.auth.getSession();
 
-    if (!session) return;
+    const userId =
+      await getSupabaseUserId();
 
-    const { data, error } = await supabaseClient
+
+    if (!userId) {
+
+      return;
+
+    }
+
+
+    const {
+      data,
+      error
+    } = await supabaseClient
       .from("chats")
       .select("*")
-      .eq("user_id", session.user.id);
+      .eq(
+        "user_id",
+        userId
+      );
+
 
     if (error) {
-      console.error(error);
+
+      console.error(
+        "Load chats error:",
+        error
+      );
+
       return;
+
     }
+
 
     const cloudChats = {};
 
-    data.forEach(chat => {
-      // SKIP ANY DELETED CHAT
-      if (chat.deleted) return;
 
-      cloudChats[chat.id] = {
-        id: chat.id,
-        title: chat.title,
-        messages: chat.messages || [],
-        created_at: chat.created_at,
-        updated_at: chat.updated_at
-      };
-    });
+    (data || []).forEach(
+      (chat) => {
 
-    // REPLACE local chats with cloud chats
-chats = cloudChats;
+        // Skip deleted chats
 
-// Fix invalid current chat
-if (!chats[currentChatId]) {
-  currentChatId = Object.keys(chats)[0] || null;
-}
+        if (chat.deleted) {
+          return;
+        }
+
+
+        cloudChats[chat.id] = {
+
+          id: chat.id,
+
+          title:
+            chat.title ||
+            "New Chat",
+
+          messages:
+            chat.messages ||
+            [],
+
+          created_at:
+            chat.created_at,
+
+          updated_at:
+            chat.updated_at ||
+            chat.created_at ||
+            new Date().toISOString()
+
+        };
+
+      }
+    );
+
+
+    // Replace local chats with cloud chats
+
+    chats =
+      cloudChats;
+
+
+    // Fix invalid current chat
+
+    if (
+      !chats[currentChatId]
+    ) {
+
+      currentChatId =
+        Object.keys(chats)[0] ||
+        null;
+
+    }
+
 
     renderChatList();
+
     renderMessages();
 
   } catch (error) {
-    console.error("Load chats error:", error);
+
+    console.error(
+      "Load chats error:",
+      error
+    );
+
   }
+
 }
+
 
 // ====================== SEND MESSAGE ======================
 
 async function sendMessage() {
-  const text = userInput.value.trim();
 
-  if (!text) return;
-
-  if (!currentChatId || !chats[currentChatId]) {
-    createNewChat();
+  if (!userInput) {
+    return;
   }
 
-  const messages = getCurrentMessages();
 
-  messages.push({
-    role: "user",
-    content: text,
-  });
+  const text =
+    userInput.value.trim();
 
-  // Auto title from first message
-  if (
-    chats[currentChatId].title === "New Chat" &&
-    messages.length === 1
-  ) {
-    chats[currentChatId].title =
-text.substring(0, 30) + (text.length > 30 ? "..." : "");
+
+  if (!text) {
+    return;
   }
 
-  setCurrentMessages(messages);
 
-renderChatList();
-renderMessages();
+  // Make sure there is a chat
 
-await syncCurrentChatToCloud();
-
-userInput.value = "";
-
-showTypingIndicator();
-
-  try {
-    const response = await fetch("/api/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    messages: getCurrentMessages(),
-  }),
-});
-
-if (!response.ok) {
-  throw new Error("Failed to get AI response");
-}
-
-removeTypingIndicator();
-
-// Create empty assistant message
-const assistantMessage = {
-  role: "assistant",
-  content: "",
-};
-
-messages.push(assistantMessage);
-
-renderMessages();
-
-if (!response.body) {
-  throw new Error("No response body");
-}
-
-const reader = response.body.getReader();
-const decoder = new TextDecoder();
-
-while (true) {
-  const { done, value } = await reader.read();
-
-  if (done) break;
-
-  const chunk = decoder.decode(value, {
-  stream: true,
-});
-
-  if (chunk) {
-  assistantMessage.content += chunk;
-}
-
-  setCurrentMessages(messages);
-
-  renderMessages();
-}
-
-renderChatList();
-
-    await syncCurrentChatToCloud();
-  } catch (error) {
-    console.error(error);
-
-    removeTypingIndicator();
-
-    messages.push({
-  role: "assistant",
-  content: "Error connecting to AI",
-});
-
-setCurrentMessages(messages);
-
-renderMessages();
-renderChatList();
-
-await syncCurrentChatToCloud();
-  }
-}
-
-// ====================== CLEAR CHAT ======================
-
-function clearCurrentChat() {
   if (
     !currentChatId ||
     !chats[currentChatId]
   ) {
-    return;
+
+    createNewChat();
+
   }
+
+
+  const messages =
+    getCurrentMessages();
+
+
+  // Add user message
+
+  messages.push({
+
+    role: "user",
+
+    content: text
+
+  });
+
+
+  // Auto title from first message
+
+  if (
+    chats[currentChatId].title ===
+      "New Chat" &&
+    messages.length === 1
+  ) {
+
+    chats[currentChatId].title =
+      text.substring(0, 30) +
+      (
+        text.length > 30
+          ? "..."
+          : ""
+      );
+
+  }
+
+
+  setCurrentMessages(
+    messages
+  );
+
+
+  renderChatList();
+
+  renderMessages();
+
+
+  // Save user message
+
+  await syncCurrentChatToCloud();
+
+
+  userInput.value = "";
+
+
+  showTypingIndicator();
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/chat",
+        {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              messages:
+                getCurrentMessages()
+            })
+
+        }
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "Failed to get AI response"
+      );
+
+    }
+
+
+    removeTypingIndicator();
+
+
+    // Create empty assistant message
+
+    const assistantMessage = {
+
+      role: "assistant",
+
+      content: ""
+
+    };
+
+
+    messages.push(
+      assistantMessage
+    );
+
+
+    renderMessages();
+
+
+    if (!response.body) {
+
+      throw new Error(
+        "No response body"
+      );
+
+    }
+
+
+    const reader =
+      response.body.getReader();
+
+
+    const decoder =
+      new TextDecoder();
+
+
+    while (true) {
+
+      const {
+        done,
+        value
+      } =
+        await reader.read();
+
+
+      if (done) {
+        break;
+      }
+
+
+      const chunk =
+        decoder.decode(
+          value,
+          {
+            stream: true
+          }
+        );
+
+
+      if (chunk) {
+
+        assistantMessage.content +=
+          chunk;
+
+      }
+
+
+      setCurrentMessages(
+        messages
+      );
+
+
+      renderMessages();
+
+    }
+
+
+    renderChatList();
+
+
+    // Save complete AI response
+
+    await syncCurrentChatToCloud();
+
+
+  } catch (error) {
+
+    console.error(
+      "AI error:",
+      error
+    );
+
+
+    removeTypingIndicator();
+
+
+    messages.push({
+
+      role: "assistant",
+
+      content:
+        "Error connecting to AI"
+
+    });
+
+
+    setCurrentMessages(
+      messages
+    );
+
+
+    renderMessages();
+
+    renderChatList();
+
+
+    await syncCurrentChatToCloud();
+
+  }
+
+}
+
+
+// ====================== CLEAR CHAT ======================
+
+function clearCurrentChat() {
+
+  if (
+    !currentChatId ||
+    !chats[currentChatId]
+  ) {
+
+    return;
+
+  }
+
 
   if (
     !confirm(
       "Clear all messages in this chat?"
     )
   ) {
+
     return;
+
   }
 
-  chats[currentChatId].messages = [];
-  chats[currentChatId].updated_at =
-    new Date().toISOString();
+
+  chats[currentChatId]
+    .messages = [];
+
+
+  chats[currentChatId]
+    .updated_at =
+      new Date().toISOString();
+
 
   renderMessages();
+
   renderChatList();
+
+
   syncCurrentChatToCloud();
+
 }
 
-// ====================== AUTH ======================
-
-if (signupBtn) {
-  signupBtn.addEventListener(
-    "click",
-    async function () {
-      const email =
-        emailInput.value.trim();
-      const password =
-        passwordInput.value.trim();
-
-      if (!email || !password) {
-        alert(
-          "Enter email and password"
-        );
-        return;
-      }
-
-      const { error } =
-        await supabaseClient.auth.signUp({
-          email: email,
-          password: password,
-        });
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      alert(
-        "Signup successful! You can now log in."
-      );
-    }
-  );
-}
-
-if (loginBtn) {
-  loginBtn.addEventListener(
-    "click",
-    async function () {
-      const email =
-        emailInput.value.trim();
-      const password =
-        passwordInput.value.trim();
-
-      if (!email || !password) {
-        alert(
-          "Enter email and password"
-        );
-        return;
-      }
-
-      const { error } =
-        await supabaseClient.auth.signInWithPassword(
-          {
-            email: email,
-            password: password,
-          }
-        );
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      authModal.style.display =
-        "none";
-
-      await loadChatsFromCloud();
-
-createNewChat();
-
-renderChatList();
-renderMessages();
-    }
-  );
-}
-
-async function checkUser() {
-  const {
-    data: { session },
-  } = await supabaseClient.auth.getSession();
-
-  if (session) {
-    authModal.style.display =
-      "none";
-
-    await loadChatsFromCloud();
-
-    createNewChat();
-  } else {
-    authModal.style.display =
-      "flex";
-  }
-
-  renderChatList();
-  renderMessages();
-}
-
-async function logout() {
-  const { error } =
-    await supabaseClient.auth.signOut();
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  location.reload();
-}
 
 // ====================== EVENT LISTENERS ======================
 
 if (sendBtn) {
+
   sendBtn.addEventListener(
     "click",
     sendMessage
   );
+
 }
 
+
 if (userInput) {
+
   userInput.addEventListener(
     "keydown",
     function (e) {
-      if (e.key === "Enter" && !e.shiftKey) {
-  e.preventDefault();
-  sendMessage();
-}
+
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey
+      ) {
+
+        e.preventDefault();
+
+        sendMessage();
+
+      }
+
     }
   );
+
 }
 
+
 if (clearBtn) {
+
   clearBtn.addEventListener(
     "click",
     clearCurrentChat
   );
+
 }
 
-if (logoutBtn) {
-  logoutBtn.addEventListener(
-    "click",
-    logout
-  );
-}
 
 if (newChatBtn) {
+
   newChatBtn.addEventListener(
     "click",
     createNewChat
   );
+
 }
+
 
 // ====================== INITIALIZE ======================
 
-checkUser();
+async function initializeApp() {
+
+  try {
+
+    // Automatically create an anonymous
+    // Supabase user if one does not exist.
+
+    await ensureAnonymousSession();
+
+
+    // Load saved chats
+
+    await loadChatsFromCloud();
+
+
+    // Create first chat if necessary
+
+    if (
+      Object.keys(chats).length === 0
+    ) {
+
+      createNewChat();
+
+    }
+
+
+    renderChatList();
+
+    renderMessages();
+
+
+  } catch (error) {
+
+    console.error(
+      "Supabase initialization error:",
+      error
+    );
+
+
+    alert(
+      "Chat history could not be connected. Enable Anonymous Sign-Ins in Supabase."
+    );
+
+
+    // Still allow local chatting
+
+    if (
+      Object.keys(chats).length === 0
+    ) {
+
+      createNewChat();
+
+    }
+
+
+    renderChatList();
+
+    renderMessages();
+
+  }
+
+}
+
+
+initializeApp();
