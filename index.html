@@ -1,58 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8" />
-<meta name="description" content="Omega AI Assistant" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="icon" href="logo.png" />
+
+  <meta
+    name="description"
+    content="Omega AI Assistant"
+  />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <link
+    rel="icon"
+    href="logo.png"
+  />
+
   <title>Omega AI Assistant</title>
 
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#000000" />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
-  
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
-/>
+  <!-- ================= PWA ================= -->
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link
+    rel="manifest"
+    href="manifest.json"
+  />
 
-  <!-- Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta
+    name="theme-color"
+    content="#000000"
+  />
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-  <!-- DOMPurify -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+  <!-- ================= STYLES ================= -->
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  />
+
+
+  <!-- ================= HIGHLIGHT.JS ================= -->
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+  />
+
+
+  <!-- ================= SUPABASE ================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+
+  <!-- ================= MARKED ================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+  ></script>
+
+
+  <!-- ================= HIGHLIGHT.JS ================= -->
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
+  ></script>
+
+
+  <!-- ================= DOMPURIFY ================= -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"
+  ></script>
+
 </head>
+
 
 <body>
 
+
   <!-- ================= HEADER ================= -->
+
   <header class="app-header">
+
     <div class="header-left">
-      <button id="sidebarToggle" class="menu-btn">☰</button>
+
+      <button
+        id="sidebarToggle"
+        class="menu-btn"
+      >
+        ☰
+      </button>
+
 
       <div>
-        <h1>My chatbot</h1>
-        <p>Ask me anything</p>
+
+        <h1>
+          My chatbot
+        </h1>
+
+        <p>
+          Ask me anything
+        </p>
+
       </div>
+
     </div>
+
   </header>
 
+
+
   <!-- ================= MAIN APP ================= -->
+
   <div class="app-container">
 
-    <!-- ========== SIDEBAR ========== -->
-    <aside id="sidebar" class="sidebar">
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <aside
+      id="sidebar"
+      class="sidebar"
+    >
 
       <div class="sidebar-header">
-        <h2>Chats</h2>
+
+        <h2>
+          Chats
+        </h2>
+
 
         <button
           id="newChatBtn"
@@ -60,26 +142,34 @@
         >
           + New
         </button>
+
       </div>
+
 
       <div
         id="chatList"
         class="chat-list"
       >
-        <!-- Chat sessions will appear here -->
+        <!-- Chat sessions appear here -->
       </div>
 
     </aside>
 
-    <!-- ========== MAIN CHAT AREA ========== -->
+
+
+    <!-- ================= CHAT AREA ================= -->
+
     <main class="chat-section">
 
+
       <!-- Chat Header -->
+
       <div class="chat-header">
 
         <h2 id="chatTitle">
           Omega AI Assistant
         </h2>
+
 
         <div class="chat-actions">
 
@@ -90,23 +180,23 @@
             Clear
           </button>
 
-          <button
-            id="logoutBtn"
-            class="logout-btn"
-          >
-            Logout
-          </button>
-
         </div>
+
       </div>
 
+
+
       <!-- Chat Messages -->
+
       <div
         id="chatContainer"
         class="chat-container"
       ></div>
 
+
+
       <!-- Input Area -->
+
       <div class="input-container">
 
         <input
@@ -116,74 +206,67 @@
           autocomplete="off"
         />
 
-        <button id="sendBtn">
+
+        <button
+          id="sendBtn"
+        >
           Send
         </button>
 
       </div>
 
+
     </main>
+
   </div>
 
-  <!-- ================= AUTH MODAL ================= -->
-  <div id="authModal" class="modal">
 
-    <div class="modal-content">
-
-      <h2>Welcome</h2>
-
-      <input
-        type="email"
-        id="email"
-        placeholder="Email"
-      />
-
-      <input
-        type="password"
-        id="password"
-        placeholder="Password"
-      />
-
-      <button id="loginBtn">
-        Login
-      </button>
-
-      <button id="signupBtn">
-        Sign Up
-      </button>
-
-    </div>
-  </div>
 
   <!-- ================= MAIN SCRIPT ================= -->
-  <script src="script.js"></script>
 
-<div
-  id="chatSheetOverlay"
-  class="chat-sheet-overlay"
-  onclick="closeChatSheet()"
-></div>
+  <script
+    src="script.js"
+  ></script>
 
-<div
-  id="chatSheet"
-  class="chat-sheet"
->
-  <div class="chat-sheet-handle"></div>
+
+
+  <!-- ================= CHAT MENU ================= -->
 
   <div
-    class="chat-sheet-item delete"
-    onclick="deleteSelectedChat()"
-  >
-    🗑 Delete
-  </div>
+    id="chatSheetOverlay"
+    class="chat-sheet-overlay"
+    onclick="closeChatSheet()"
+  ></div>
+
 
   <div
-    class="chat-sheet-item"
-    onclick="renameSelectedChat()"
+    id="chatSheet"
+    class="chat-sheet"
   >
-    ✏ Rename
+
+    <div
+      class="chat-sheet-handle"
+    ></div>
+
+
+    <div
+      class="chat-sheet-item delete"
+      onclick="deleteSelectedChat()"
+    >
+      🗑 Delete
+    </div>
+
+
+    <div
+      class="chat-sheet-item"
+      onclick="renameSelectedChat()"
+    >
+      ✏ Rename
+    </div>
+
   </div>
-</div>
+
 
 </body>
-  </html>
+
+    </html>
