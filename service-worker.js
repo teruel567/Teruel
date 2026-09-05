@@ -1,4 +1,4 @@
-const CACHE_NAME = "omega-ai-v1";
+const CACHE_NAME = "omega-ai-v2";
 
 // Install
 self.addEventListener("install", (event) => {
